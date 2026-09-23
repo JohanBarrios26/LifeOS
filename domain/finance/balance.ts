@@ -41,3 +41,24 @@ export function getTotalDebt(accounts: Account[], transactions: Transaction[]): 
 
   return totalDebt;
 }
+
+/**
+ * Calculates the money available right now across cash, debit and savings accounts.
+ * Credit cards and loans are not available money, even if they have a credit limit left.
+ */
+export function getAvailableBalance(accounts: Account[], transactions: Transaction[]): Money {
+  let availableBalance = 0;
+  for (const account of accounts) {
+    if (account.deletedAt) {
+      continue;
+    }
+    if (account.type === "cash" || account.type === "debit" || account.type === "savings") {
+      const balance = getAccountBalance(account, transactions);
+      availableBalance += balance;
+    }
+  }
+
+  return availableBalance;
+}
+
+
