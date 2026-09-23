@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, formatShortDate } from "./format";
+import { formatMoney, formatShortDate, parseAmount } from "./format";
 
 // Intl uses non-breaking spaces; normalize them so expectations stay readable.
 const format = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\s/g, " ");
@@ -15,6 +15,29 @@ describe("formatMoney", () => {
 
   it("converts cents to dollars for USD", () => {
     expect(format(1250, "USD")).toBe("US$ 12,50");
+  });
+});
+
+describe("parseAmount", () => {
+  it("reads pesos written with or without thousands separators", () => {
+    expect(parseAmount("1.200.000", "COP")).toBe(1_200_000);
+    expect(parseAmount("1200000", "COP")).toBe(1_200_000);
+    expect(parseAmount("$ 50.000", "COP")).toBe(50_000);
+    expect(parseAmount("0", "COP")).toBe(0);
+  });
+
+  it("converts dollars with decimals into cents", () => {
+    expect(parseAmount("12,50", "USD")).toBe(1250);
+    expect(parseAmount("0,29", "USD")).toBe(29);
+    expect(parseAmount("40", "USD")).toBe(4000);
+  });
+
+  it("rejects text that is not a valid amount", () => {
+    expect(parseAmount("", "COP")).toBeNull();
+    expect(parseAmount("abc", "COP")).toBeNull();
+    expect(parseAmount("-5.000", "COP")).toBeNull();
+    expect(parseAmount("12,5", "COP")).toBeNull();
+    expect(parseAmount("12,505", "USD")).toBeNull();
   });
 });
 

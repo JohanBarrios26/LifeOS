@@ -1,14 +1,7 @@
 import { getAccountBalance, getAvailableBalance, getTotalDebt } from "@/domain/finance/balance";
-import type { Account, AccountType, CurrencyCode, Money, Transaction } from "@/domain/finance/types";
+import type { Account, CurrencyCode, Money, Transaction } from "@/domain/finance/types";
 import { formatMoney, formatShortDate } from "@/lib/format";
-
-const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  cash: "Efectivo",
-  debit: "Débito",
-  savings: "Ahorros",
-  credit: "Tarjeta de crédito",
-  loan: "Préstamo",
-};
+import { ACCOUNT_TYPE_LABELS, TRANSACTION_KIND_LABELS } from "./labels";
 
 const RECENT_TRANSACTIONS_LIMIT = 5;
 
@@ -23,7 +16,8 @@ export function FinanceDashboard({ accounts, transactions, currency }: FinanceDa
   const accountNames = new Map(accounts.map((account) => [account.id, account.name]));
   const recentTransactions = transactions
     .filter((transaction) => !transaction.deletedAt)
-    .toSorted((a, b) => b.date.localeCompare(a.date))
+    // Newest first; on the same day, the one recorded last goes first.
+    .toSorted((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
     .slice(0, RECENT_TRANSACTIONS_LIMIT);
 
   return (
@@ -73,11 +67,18 @@ export function FinanceDashboard({ accounts, transactions, currency }: FinanceDa
         <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
           Movimientos recientes
         </h2>
-        <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+        {recentTransactions.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+            Aún no hay movimientos. Registra tu primer gasto o ingreso.
+          </p>
+        )}
+        <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white empty:hidden dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
           {recentTransactions.map((transaction) => (
             <li key={transaction.id} className="flex items-center justify-between gap-4 px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate font-medium">{transaction.description}</p>
+                <p className="truncate font-medium">
+                  {transaction.description ?? transaction.category ?? TRANSACTION_KIND_LABELS[transaction.kind]}
+                </p>
                 <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
                   {formatShortDate(transaction.date)} · {describeAccounts(transaction, accountNames)}
                 </p>

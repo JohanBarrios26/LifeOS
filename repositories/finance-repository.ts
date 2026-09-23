@@ -5,7 +5,7 @@ import type { Account, Transaction } from "@/domain/finance/types";
  * specific database, so IndexedDB can later be replaced by PostgreSQL without touching them.
  */
 export interface FinanceRepository {
-  /** Every account, including deleted ones: calculations decide what to ignore. */
+  /** Every account in creation order, including deleted ones: calculations decide what to ignore. */
   listAccounts(): Promise<Account[]>;
   /** Every transaction ordered by date, including deleted ones. */
   listTransactions(): Promise<Transaction[]>;

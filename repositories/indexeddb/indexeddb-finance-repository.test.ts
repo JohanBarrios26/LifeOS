@@ -36,6 +36,17 @@ describe("IndexedDB finance repository", () => {
     expect(await repository.listAccounts()).toEqual(expect.arrayContaining([debit, card]));
   });
 
+  it("lists accounts in the order they were created", async () => {
+    const repository = createRepository();
+    const first = makeAccount({ id: "zzz", createdAt: "2026-09-01T10:00:00.000Z" });
+    const second = makeAccount({ id: "aaa", createdAt: "2026-09-02T10:00:00.000Z" });
+
+    await repository.saveAccount(second);
+    await repository.saveAccount(first);
+
+    expect(await repository.listAccounts()).toEqual([first, second]);
+  });
+
   it("lists transactions ordered by date", async () => {
     const repository = createRepository();
     const later = makeTransaction({ date: "2026-09-20", amount: 10_000 });

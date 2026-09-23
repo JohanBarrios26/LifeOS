@@ -3,7 +3,10 @@ import type { LifeosDatabase } from "./lifeos-database";
 
 export function createIndexedDbFinanceRepository(db: LifeosDatabase): FinanceRepository {
   return {
-    listAccounts: () => db.accounts.toArray(),
+    listAccounts: async () => {
+      const accounts = await db.accounts.toArray();
+      return accounts.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    },
     listTransactions: () => db.transactions.orderBy("date").toArray(),
     saveAccount: async (account) => {
       await db.accounts.put(account);

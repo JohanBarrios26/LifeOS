@@ -1,5 +1,4 @@
-import { FinanceDashboard } from "@/features/finance/finance-dashboard";
-import { sampleAccounts, sampleCurrency, sampleTransactions } from "@/features/finance/sample-data";
+import { FinanceApp } from "@/features/finance/finance-app";
 
 export default function Home() {
   return (
@@ -10,11 +9,11 @@ export default function Home() {
         <p className="text-zinc-600 dark:text-zinc-400">Así están tus finanzas hoy.</p>
       </header>
 
-      <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-        Estás viendo datos de ejemplo. Pronto podrás registrar los tuyos.
-      </p>
+      <FinanceApp />
 
-      <FinanceDashboard accounts={sampleAccounts} transactions={sampleTransactions} currency={sampleCurrency} />
+      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
+        Tus datos se guardan solo en este navegador.
+      </p>
     </main>
   );
 }
