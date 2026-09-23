@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LIFEOS
 
-## Getting Started
+> A personal life operating system for recording meaningful facts, understanding progress, and making better decisions over time.
 
-First, run the development server:
+LIFEOS is a long-term personal web application. It brings together finances, habits, goals, learning, health, relationships, and meaningful memories in one place.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+This is not a 30-day challenge tracker. The goal is to preserve a trustworthy history for years, then turn that history into useful reports and reflections.
+
+## Why LIFEOS?
+
+Personal information usually lives in disconnected places: a banking app, a notes app, a calendar, photos, and habit trackers. LIFEOS explores a single, private-first system that connects those facts without turning a person's life into an artificial score.
+
+For example, a date with a partner can become one meaningful moment connected to:
+
+- an activity together;
+- a reflection or note;
+- photos stored privately;
+- an optional financial expense; and
+- a shared goal, such as spending quality time together.
+
+## MVP scope
+
+The first usable version will focus on daily, high-value actions:
+
+1. **Finances:** record income, cash expenses, credit-card purchases, debts, and debt payments.
+2. **Habits:** record habits with real values such as minutes, quantity, or notes.
+3. **Moments:** save meaningful activities with notes and, later, photos.
+4. **Dashboard:** show the current financial position and today's most relevant actions.
+
+Goals, reports, charts, cloud synchronization, and natural-language queries will be added progressively after the core records are reliable.
+
+## Data principle
+
+**Store facts. Calculate results.**
+
+LIFEOS stores events such as an income, a purchase, a payment, or a study session. It calculates derived values such as available balance, total debt, hours studied, streaks, and goal progress from those records.
+
+This prevents contradictory data and keeps historical reports reliable.
+
+### Financial rules
+
+```text
+available balance = opening balance + income - cash expenses - debt payments
+total debt        = initial debt + credit purchases - debt payments
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A credit-card purchase increases debt but does not reduce available cash until the debt is paid.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The project will keep the UI separate from business rules and persistence:
 
-## Learn More
+```text
+Next.js UI
+    ↓
+Feature actions and forms
+    ↓
+Domain rules and calculations
+    ↓
+Repository interface
+    ↓
+localStorage first → database and sync later
+```
 
-To learn more about Next.js, take a look at the following resources:
+Read the detailed architectural decisions in [docs/architecture.md](docs/architecture.md).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- ESLint
 
-## Deploy on Vercel
+## Getting started
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open `http://localhost:3000` in your browser.
+
+## Roadmap
+
+- [x] Initialize the Next.js project and GitHub repository.
+- [x] Document the product vision and core data rules.
+- [ ] Define the financial domain model.
+- [ ] Implement income, cash expense, debt, credit purchase, and debt payment records.
+- [ ] Add local persistence behind a repository interface.
+- [ ] Build the financial dashboard.
+- [ ] Add quantitative habit tracking.
+- [ ] Add meaningful moments and photo storage.
+- [ ] Add reports, charts, and date filters.
+- [ ] Add authentication, cloud synchronization, and private media storage.
+
+## Privacy
+
+LIFEOS is designed for sensitive personal information. Never commit real financial records, private notes, photos, passwords, API keys, or `.env` files to this public repository.
+
+## Learning approach
+
+This project is built as a learning journey. Each feature starts with a small, understandable implementation, followed by testing and refactoring when necessary. The commit history documents that evolution.
