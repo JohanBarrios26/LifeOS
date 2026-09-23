@@ -21,7 +21,8 @@ export interface BaseEntity {
   deletedAt?: string;
 }
 
-export type AccountType = "cash" | "debit" | "savings" | "credit" | "loan";
+export const ACCOUNT_TYPES = ["cash", "debit", "savings", "credit", "loan"] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 export interface Account extends BaseEntity {
   name: string;
@@ -32,7 +33,8 @@ export interface Account extends BaseEntity {
   openingDate: LocalDate;
 }
 
-export type TransactionKind = "income" | "expense" | "transfer" | "adjustment";
+export const TRANSACTION_KINDS = ["income", "expense", "transfer", "adjustment"] as const;
+export type TransactionKind = (typeof TRANSACTION_KINDS)[number];
 
 export interface Transaction extends BaseEntity {
   kind: TransactionKind;

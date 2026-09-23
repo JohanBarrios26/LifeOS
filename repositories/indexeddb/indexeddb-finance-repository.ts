@@ -14,5 +14,12 @@ export function createIndexedDbFinanceRepository(db: LifeosDatabase): FinanceRep
     saveTransaction: async (transaction) => {
       await db.transactions.put(transaction);
     },
+    saveAll: async ({ accounts, transactions }) => {
+      // A database transaction: if any write fails, every write in it is undone.
+      await db.transaction("rw", db.accounts, db.transactions, async () => {
+        await db.accounts.bulkPut(accounts);
+        await db.transactions.bulkPut(transactions);
+      });
+    },
   };
 }

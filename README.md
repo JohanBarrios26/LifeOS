@@ -90,10 +90,12 @@ Open `http://localhost:3000` in your browser.
 - [x] Initialize the Next.js project and GitHub repository.
 - [x] Document the product vision and core data rules.
 - [x] Define the financial domain model (single ledger of transactions).
-- [ ] Calculate account balances, available balance, and total debt with tests.
-- [ ] Record income, expenses, credit purchases, and debt payments.
-- [ ] Add local persistence behind a repository interface.
-- [ ] Build the financial dashboard.
+- [x] Calculate account balances, available balance, and total debt with tests.
+- [x] Record income, expenses, credit purchases, and debt payments.
+- [x] Add local persistence (IndexedDB) behind a repository interface.
+- [x] Build the financial dashboard.
+- [x] Export and import backups as JSON files.
+- [ ] Edit and delete records.
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.
 - [ ] Add reports, charts, and date filters.

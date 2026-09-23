@@ -44,5 +44,10 @@ export function useFinanceData() {
     setData(await loadFinanceData());
   }, []);
 
-  return { data, failed, saveAccount, saveTransaction };
+  const importRecords = useCallback(async (records: FinanceData) => {
+    await getFinanceRepository().saveAll(records);
+    setData(await loadFinanceData());
+  }, []);
+
+  return { data, failed, saveAccount, saveTransaction, importRecords };
 }

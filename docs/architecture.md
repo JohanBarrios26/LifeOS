@@ -62,9 +62,20 @@ Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and
 ## Persistence path
 
 ```text
-First: repository interface + local browser storage
+Now:   FinanceRepository interface + IndexedDB (Dexie) in the browser
 Later: repository implementation backed by PostgreSQL and object storage
 ```
+
+Screens call `getFinanceRepository()` and never touch IndexedDB directly.
+
+## Backups
+
+While data lives only in the browser, a JSON backup is the only protection against losing it.
+
+- The file contains every record, deleted ones included, plus `app: "lifeos"`, `schemaVersion` and `exportedAt`.
+- Importing checks every record before writing anything (`parseBackup`), then saves all records in one database transaction: a failed import changes nothing.
+- Importing adds records and replaces those with the same `id`. It never deletes existing records.
+- When records change shape, increase `BACKUP_SCHEMA_VERSION` and teach `parseBackup` to upgrade older files.
 
 Photos belong in object storage, not directly in a relational database row. The database stores their metadata and their relationship to a meaningful moment.
 

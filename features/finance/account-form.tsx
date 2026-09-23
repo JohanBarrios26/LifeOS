@@ -3,13 +3,11 @@
 import { type FormEvent, useState } from "react";
 import { Button, ErrorList, Field, formCardClassName, inputClassName } from "@/components/form";
 import { createEntityFields } from "@/domain/entity";
-import type { Account, AccountType, CurrencyCode } from "@/domain/finance/types";
+import { ACCOUNT_TYPES, type Account, type AccountType, type CurrencyCode } from "@/domain/finance/types";
 import { toLocalDate } from "@/lib/dates";
 import { parseAmount } from "@/lib/format";
 import { LOCAL_USER_ID } from "@/lib/preferences";
 import { ACCOUNT_TYPE_LABELS } from "./labels";
-
-const ACCOUNT_TYPES = Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[];
 
 interface AccountFormProps {
   currency: CurrencyCode;

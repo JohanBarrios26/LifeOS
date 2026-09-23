@@ -58,6 +58,19 @@ describe("IndexedDB finance repository", () => {
     expect(await repository.listTransactions()).toEqual([earlier, later]);
   });
 
+  it("saves many records at once, keeping the ones already stored", async () => {
+    const repository = createRepository();
+    const existing = makeAccount({ id: "wallet", type: "cash" });
+    await repository.saveAccount(existing);
+
+    const debit = makeAccount({ id: "debit" });
+    const salary = makeTransaction({ kind: "income", toAccountId: "debit", amount: 2_000_000 });
+    await repository.saveAll({ accounts: [debit], transactions: [salary] });
+
+    expect(await repository.listAccounts()).toEqual(expect.arrayContaining([existing, debit]));
+    expect(await repository.listTransactions()).toEqual([salary]);
+  });
+
   it("replaces a record saved again with the same id", async () => {
     const repository = createRepository();
     const lunch = makeTransaction({ amount: 25_000, description: "Almuerzo" });

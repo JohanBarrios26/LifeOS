@@ -10,10 +10,6 @@ export default function Home() {
       </header>
 
       <FinanceApp />
-
-      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
-        Tus datos se guardan solo en este navegador.
-      </p>
     </main>
   );
 }

@@ -13,4 +13,9 @@ export interface FinanceRepository {
   saveAccount(account: Account): Promise<void>;
   /** Creates the transaction, or replaces it if one with the same id exists. */
   saveTransaction(transaction: Transaction): Promise<void>;
+  /**
+   * Saves many records at once, e.g. when restoring a backup. All or nothing: if one
+   * record fails, none is saved. Records with an existing id replace the stored ones.
+   */
+  saveAll(records: { accounts: Account[]; transactions: Transaction[] }): Promise<void>;
 }
