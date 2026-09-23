@@ -39,12 +39,15 @@ This prevents contradictory data and keeps historical reports reliable.
 
 ### Financial rules
 
+Every financial fact is a transaction that moves money out of one account and/or into another. Credit cards and loans are accounts with a negative balance while money is owed.
+
 ```text
-available balance = opening balance + income - cash expenses - debt payments
-total debt        = initial debt + credit purchases - debt payments
+account balance   = opening balance + money in - money out
+available balance = cash + debit + savings balances
+total debt        = credit card + loan balances
 ```
 
-A credit-card purchase increases debt but does not reduce available cash until the debt is paid.
+A credit-card purchase increases debt but does not reduce available cash until the debt is paid. Paying the card is a transfer from a debit account to the card.
 
 ## Architecture
 
@@ -71,6 +74,7 @@ Read the detailed architectural decisions in [docs/architecture.md](docs/archite
 - TypeScript
 - Tailwind CSS
 - ESLint
+- Vitest (`npm test`)
 
 ## Getting started
 
@@ -85,8 +89,9 @@ Open `http://localhost:3000` in your browser.
 
 - [x] Initialize the Next.js project and GitHub repository.
 - [x] Document the product vision and core data rules.
-- [ ] Define the financial domain model.
-- [ ] Implement income, cash expense, debt, credit purchase, and debt payment records.
+- [x] Define the financial domain model (single ledger of transactions).
+- [ ] Calculate account balances, available balance, and total debt with tests.
+- [ ] Record income, expenses, credit purchases, and debt payments.
 - [ ] Add local persistence behind a repository interface.
 - [ ] Build the financial dashboard.
 - [ ] Add quantitative habit tracking.

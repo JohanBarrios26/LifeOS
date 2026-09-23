@@ -23,17 +23,41 @@ repositories/ Interfaces and persistence implementations
 
 The first implementation can be lightweight. Folders are introduced only when a feature needs them.
 
-## Financial model
+## Financial model: a single ledger
 
-The financial domain must distinguish three events:
+Every financial fact is a `Transaction` that moves money **out of** one account and/or **into** another. Credit cards and loans are accounts too; their balance is negative while money is owed.
 
-| Event | Available balance | Debt |
-| --- | ---: | ---: |
-| Cash expense | decreases | unchanged |
-| Credit purchase | unchanged | increases |
-| Debt payment | decreases | decreases |
+```text
+Account      cash | debit | savings | credit | loan
+Transaction  income | expense | transfer | adjustment
+             amount (always positive), fromAccountId?, toAccountId?
+```
 
-The application should store the individual events and calculate balances for a selected date range. It must not save `availableBalance` or `totalDebt` as mutable source-of-truth fields.
+| Real-world event | How it is recorded | Available balance | Debt |
+| --- | --- | ---: | ---: |
+| Income | `income` into Debit | increases | unchanged |
+| Cash/debit expense | `expense` from Debit | decreases | unchanged |
+| Credit purchase | `expense` from Credit card | unchanged | increases |
+| Debt payment | `transfer` from Debit to Credit card | decreases | decreases |
+| Move to savings | `transfer` from Debit to Savings | moves | unchanged |
+
+One rule computes every balance:
+
+```text
+balance = openingBalance + money into the account − money out of the account
+```
+
+- **Available balance** = sum of `cash`, `debit` and `savings` balances.
+- **Total debt** = sum of `credit` and `loan` balances (shown as a positive number).
+
+Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and `DebtPayment` entities: transfers, refunds, card interest and cash advances fit without new entities, and one calculation serves every account. `availableBalance` and `totalDebt` are never stored.
+
+## Data conventions
+
+- **Money is an integer** in the currency's minor unit (cents for USD, pesos for COP). Floating-point math (`0.1 + 0.2 !== 0.3`) must never touch money.
+- **Dates of facts are local calendar dates** (`"2026-09-23"`), so a record made at 11 p.m. stays on the day it happened.
+- **Every entity** has `id` (UUID created on the device), `userId`, `createdAt`, `updatedAt` and an optional `deletedAt`. Deleting sets `deletedAt`; calculations ignore those records.
+- **Stored data carries a `schemaVersion`** so older data can be migrated instead of lost.
 
 ## Persistence path
 
