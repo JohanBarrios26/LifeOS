@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { Button, ErrorList, Field, formCardClassName, inputClassName } from "@/components/form";
 import { createEntityFields } from "@/domain/entity";
+import { isDebtAccountType } from "@/domain/finance/accounts";
 import { ACCOUNT_TYPES, type Account, type AccountType, type CurrencyCode } from "@/domain/finance/types";
 import { toLocalDate } from "@/lib/dates";
 import { parseAmount } from "@/lib/format";
@@ -19,7 +20,7 @@ export function AccountForm({ currency, onSave, onCancel }: AccountFormProps) {
   const [type, setType] = useState<AccountType>("debit");
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const isDebt = type === "credit" || type === "loan";
+  const isDebt = isDebtAccountType(type);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

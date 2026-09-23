@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/form";
 import { markDeleted, restoreDeleted } from "@/domain/entity";
+import { getAccountBalance } from "@/domain/finance/balance";
 import type { Transaction } from "@/domain/finance/types";
 import { BackupPanel } from "@/features/backup/backup-panel";
 import { DEFAULT_CURRENCY } from "@/lib/preferences";
@@ -66,6 +67,9 @@ export function FinanceApp() {
   }
 
   const activeAccounts = data.accounts.filter((account) => !account.deletedAt);
+  const balances = new Map(
+    activeAccounts.map((account) => [account.id, getAccountBalance(account, data.transactions)]),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,6 +121,7 @@ export function FinanceApp() {
           {openForm.type === "new-transaction" && (
             <TransactionForm
               accounts={activeAccounts}
+              balances={balances}
               currency={DEFAULT_CURRENCY}
               onSave={async (transaction) => {
                 await saveTransaction(transaction);
@@ -131,6 +136,7 @@ export function FinanceApp() {
               // A new key per transaction resets the form when another one is chosen.
               key={openForm.transaction.id}
               accounts={activeAccounts}
+              balances={balances}
               currency={DEFAULT_CURRENCY}
               transaction={openForm.transaction}
               onSave={async (transaction) => {

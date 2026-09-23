@@ -50,6 +50,16 @@ balance = openingBalance + money into the account − money out of the account
 - **Available balance** = sum of `cash`, `debit` and `savings` balances.
 - **Total debt** = sum of `credit` and `loan` balances (shown as a positive number).
 
+The form offers a **"Pago de deuda"** tab: it only lists available-money accounts as the source and credit cards or loans as the destination, but it is stored as a regular `transfer` (category "Pago de deuda" by default). Payments per debt are derived from transfers into each debt account.
+
+### Interest, fees and installments
+
+LIFEOS does **not** calculate interest from a rate. Banks use daily balances, different rates per purchase type and monthly rate changes, so a calculated figure would drift away from the real statement.
+
+- Interest, card fees and insurance are recorded as the bank charges them: an `expense` from the card, category "Intereses" or "Cuota de manejo", using the figure on the statement.
+- A purchase in installments is recorded once, for its full amount, on the day it was made: the whole amount is owed from that moment.
+- Future: "match the statement" — the person types the balance on the statement and LIFEOS records the difference as interest or an `adjustment`.
+
 Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and `DebtPayment` entities: transfers, refunds, card interest and cash advances fit without new entities, and one calculation serves every account. `availableBalance` and `totalDebt` are never stored.
 
 ## Data conventions

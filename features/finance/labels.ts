@@ -38,5 +38,7 @@ export const SUGGESTED_CATEGORIES = [
   "Entretenimiento",
   "Salario",
   "Pago de deuda",
+  "Intereses",
+  "Cuota de manejo",
   "Ahorro",
 ];
