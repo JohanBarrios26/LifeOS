@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAccountBalance } from "./balance";
+import { getAccountBalance, getTotalDebt } from "./balance";
 import type { Account, Transaction } from "./types";
 
 const TIMESTAMP = "2026-09-01T00:00:00.000Z";
@@ -100,5 +100,51 @@ describe("getAccountBalance", () => {
     const otherExpense = makeTransaction({ kind: "expense", fromAccountId: "savings", amount: 30_000 });
 
     expect(getAccountBalance(debit, [otherExpense])).toBe(500_000);
+  });
+});
+
+describe("getTotalDebt", () => {
+  const debit = makeAccount({ id: "debit", openingBalance: 500_000 });
+  const creditCard = makeAccount({ id: "nu-card", type: "credit", openingBalance: -300_000 });
+  const loan = makeAccount({ id: "car-loan", type: "loan", openingBalance: -5_000_000 });
+
+  it("returns zero when there are no credit cards or loans", () => {
+    expect(getTotalDebt([debit], [])).toBe(0);
+  });
+
+  it("returns the debt of a credit card as a positive number", () => {
+    expect(getTotalDebt([creditCard], [])).toBe(300_000);
+  });
+
+  it("ignores cash, debit and savings accounts", () => {
+    expect(getTotalDebt([debit, creditCard], [])).toBe(300_000);
+  });
+
+  it("adds up credit cards and loans, including new purchases", () => {
+    const purchase = makeTransaction({ kind: "expense", fromAccountId: "nu-card", amount: 120_000 });
+
+    expect(getTotalDebt([creditCard, loan], [purchase])).toBe(5_420_000);
+  });
+
+  it("goes down when a debt is paid", () => {
+    const payment = makeTransaction({
+      kind: "transfer",
+      fromAccountId: "debit",
+      toAccountId: "nu-card",
+      amount: 80_000,
+    });
+
+    expect(getTotalDebt([debit, creditCard], [payment])).toBe(220_000);
+  });
+
+  it("ignores deleted accounts", () => {
+    const closedCard = makeAccount({
+      id: "old-card",
+      type: "credit",
+      openingBalance: -100_000,
+      deletedAt: "2026-09-15T00:00:00.000Z",
+    });
+
+    expect(getTotalDebt([creditCard, closedCard], [])).toBe(300_000);
   });
 });

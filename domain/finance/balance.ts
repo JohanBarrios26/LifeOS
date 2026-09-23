@@ -21,3 +21,23 @@ export function getAccountBalance(account: Account, transactions: Transaction[])
 
   return balance;
 }
+
+/**
+ * Calculates how much money is owed across all credit cards and loans.
+ * Returned as a positive number: a card with a balance of -420,000 adds 420,000.
+ */
+export function getTotalDebt(accounts: Account[], transactions: Transaction[]): Money {
+  let totalDebt = 0;
+
+  for (const account of accounts) {
+    if (account.deletedAt) {
+      continue;
+    }
+    if (account.type === "credit" || account.type === "loan") {
+      const balance = getAccountBalance(account, transactions);
+      totalDebt -= balance;
+    }
+  }
+
+  return totalDebt;
+}
