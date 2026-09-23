@@ -1,37 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getAccountBalance, getAvailableBalance, getTotalDebt } from "./balance";
-import type { Account, Transaction } from "./types";
-
-const TIMESTAMP = "2026-09-01T00:00:00.000Z";
-
-function makeAccount(overrides: Partial<Account> = {}): Account {
-  return {
-    id: "debit",
-    userId: "user-1",
-    createdAt: TIMESTAMP,
-    updatedAt: TIMESTAMP,
-    name: "Debit account",
-    type: "debit",
-    currency: "COP",
-    openingBalance: 0,
-    openingDate: "2026-09-01",
-    ...overrides,
-  };
-}
-
-let nextId = 1;
-function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
-  return {
-    id: `tx-${nextId++}`,
-    userId: "user-1",
-    createdAt: TIMESTAMP,
-    updatedAt: TIMESTAMP,
-    kind: "expense",
-    date: "2026-09-10",
-    amount: 0,
-    ...overrides,
-  };
-}
+import { makeAccount, makeTransaction } from "./test-factories";
 
 describe("getAccountBalance", () => {
   const debit = makeAccount({ id: "debit", openingBalance: 500_000 });
