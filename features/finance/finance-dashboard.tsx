@@ -13,11 +13,20 @@ interface FinanceDashboardProps {
   transactions: Transaction[];
   currency: CurrencyCode;
   onSelectTransaction: (transaction: Transaction) => void;
+  onSelectAccount: (account: Account) => void;
 }
 
-export function FinanceDashboard({ accounts, transactions, currency, onSelectTransaction }: FinanceDashboardProps) {
+export function FinanceDashboard({
+  accounts,
+  transactions,
+  currency,
+  onSelectTransaction,
+  onSelectAccount,
+}: FinanceDashboardProps) {
   const [showAll, setShowAll] = useState(false);
-  const activeAccounts = accounts.filter((account) => !account.deletedAt);
+  const [showArchived, setShowArchived] = useState(false);
+  const openAccounts = accounts.filter((account) => !account.deletedAt && !account.archivedAt);
+  const archivedAccounts = accounts.filter((account) => !account.deletedAt && account.archivedAt);
   const accountNames = new Map(accounts.map((account) => [account.id, account.name]));
   const activeTransactions = transactions
     .filter((transaction) => !transaction.deletedAt)
@@ -45,29 +54,43 @@ export function FinanceDashboard({ accounts, transactions, currency, onSelectTra
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">Cuentas</h2>
-        <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-          {activeAccounts.map((account) => {
-            const balance = getAccountBalance(account, transactions);
-            return (
-              <li key={account.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{account.name}</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {ACCOUNT_TYPE_LABELS[account.type]}
-                  </p>
-                </div>
-                <p
-                  className={`shrink-0 font-semibold tabular-nums ${
-                    balance < 0 ? "text-red-600 dark:text-red-400" : ""
-                  }`}
-                >
-                  {formatMoney(balance, account.currency)}
-                </p>
-              </li>
-            );
-          })}
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Cuentas</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Toca una para editarla</p>
+        </div>
+        <ul className="divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white empty:hidden dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+          {openAccounts.map((account) => (
+            <AccountRow
+              key={account.id}
+              account={account}
+              balance={getAccountBalance(account, transactions)}
+              onSelect={onSelectAccount}
+            />
+          ))}
         </ul>
+        {archivedAccounts.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowArchived(!showArchived)}
+              className="mt-2 w-full rounded-xl py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              {showArchived ? "Ocultar cuentas archivadas" : `Ver cuentas archivadas (${archivedAccounts.length})`}
+            </button>
+            {showArchived && (
+              <ul className="divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-dashed border-zinc-300 opacity-70 dark:divide-zinc-800 dark:border-zinc-700">
+                {archivedAccounts.map((account) => (
+                  <AccountRow
+                    key={account.id}
+                    account={account}
+                    balance={getAccountBalance(account, transactions)}
+                    onSelect={onSelectAccount}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </section>
 
       <section>
@@ -119,6 +142,38 @@ export function FinanceDashboard({ accounts, transactions, currency, onSelectTra
         )}
       </section>
     </div>
+  );
+}
+
+function AccountRow({
+  account,
+  balance,
+  onSelect,
+}: {
+  account: Account;
+  balance: Money;
+  onSelect: (account: Account) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(account)}
+        aria-label={`Editar cuenta: ${account.name}`}
+        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-medium">{account.name}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {ACCOUNT_TYPE_LABELS[account.type]}
+            {account.archivedAt && " · archivada"}
+          </p>
+        </div>
+        <p className={`shrink-0 font-semibold tabular-nums ${balance < 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+          {formatMoney(balance, account.currency)}
+        </p>
+      </button>
+    </li>
   );
 }
 

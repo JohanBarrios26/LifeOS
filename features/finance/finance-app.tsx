@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/form";
-import { markDeleted, restoreDeleted } from "@/domain/entity";
+import { markDeleted, markUpdated, restoreDeleted } from "@/domain/entity";
+import { type AccountRemoval, getAccountRemoval } from "@/domain/finance/accounts";
 import { getAccountBalance } from "@/domain/finance/balance";
-import type { Transaction } from "@/domain/finance/types";
+import type { Account, Transaction } from "@/domain/finance/types";
 import { BackupPanel } from "@/features/backup/backup-panel";
 import { DEFAULT_CURRENCY } from "@/lib/preferences";
 import { AccountForm } from "./account-form";
@@ -16,40 +17,70 @@ type OpenForm =
   | { type: "none" }
   | { type: "new-transaction" }
   | { type: "edit-transaction"; transaction: Transaction }
-  | { type: "account" };
+  | { type: "new-account" }
+  | { type: "edit-account"; account: Account };
+
+/** A change the person can take back from the notice at the top. */
+interface Undo {
+  message: string;
+  revert: () => Promise<void>;
+}
 
 export function FinanceApp() {
   const { data, failed, saveAccount, saveTransaction, importRecords } = useFinanceData();
   const [openForm, setOpenForm] = useState<OpenForm>({ type: "none" });
-  const [recentlyDeleted, setRecentlyDeleted] = useState<Transaction | null>(null);
+  const [undo, setUndo] = useState<Undo | null>(null);
 
   function showForm(form: OpenForm) {
     setOpenForm(form);
-    setRecentlyDeleted(null);
+    setUndo(null);
+    if (form.type.startsWith("edit")) {
+      // The form opens at the top of the page.
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
   const closeForm = () => setOpenForm({ type: "none" });
 
   function editTransaction(transaction: Transaction) {
     // Adjustments cannot be created from the form yet, so they cannot be edited either.
-    if (transaction.kind === "adjustment") {
-      return;
+    if (transaction.kind !== "adjustment") {
+      showForm({ type: "edit-transaction", transaction });
     }
-    showForm({ type: "edit-transaction", transaction });
-    // The form opens at the top of the page.
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function deleteTransaction(transaction: Transaction) {
     const deleted = markDeleted(transaction);
     await saveTransaction(deleted);
     closeForm();
-    setRecentlyDeleted(deleted);
+    setUndo({ message: "Movimiento eliminado.", revert: () => saveTransaction(restoreDeleted(deleted)) });
   }
 
-  async function undoDelete() {
-    if (recentlyDeleted) {
-      await saveTransaction(restoreDeleted(recentlyDeleted));
-      setRecentlyDeleted(null);
+  async function removeAccount(account: Account, removal: AccountRemoval) {
+    if (removal === "delete") {
+      const deleted = markDeleted(account);
+      await saveAccount(deleted);
+      closeForm();
+      setUndo({ message: "Cuenta eliminada.", revert: () => saveAccount(restoreDeleted(deleted)) });
+    } else if (removal === "archive") {
+      const archived = markUpdated(account, { archivedAt: new Date().toISOString() });
+      await saveAccount(archived);
+      closeForm();
+      setUndo({
+        message: "Cuenta archivada.",
+        revert: () => saveAccount(markUpdated(archived, { archivedAt: undefined })),
+      });
+    }
+  }
+
+  async function reactivateAccount(account: Account) {
+    await saveAccount(markUpdated(account, { archivedAt: undefined }));
+    closeForm();
+  }
+
+  async function revertLastChange() {
+    if (undo) {
+      await undo.revert();
+      setUndo(null);
     }
   }
 
@@ -66,14 +97,42 @@ export function FinanceApp() {
     return <p className="text-zinc-500 dark:text-zinc-400">Cargando tus datos…</p>;
   }
 
-  const activeAccounts = data.accounts.filter((account) => !account.deletedAt);
+  // Archived accounts still exist (their history is valid); deleted ones do not.
+  const existingAccounts = data.accounts.filter((account) => !account.deletedAt);
   const balances = new Map(
-    activeAccounts.map((account) => [account.id, getAccountBalance(account, data.transactions)]),
+    existingAccounts.map((account) => [account.id, getAccountBalance(account, data.transactions)]),
   );
+
+  const saveAndClose = <T,>(save: (record: T) => Promise<void>) => async (record: T) => {
+    await save(record);
+    closeForm();
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      {activeAccounts.length === 0 ? (
+      {undo && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-xl bg-zinc-900 px-4 py-3 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
+        >
+          <span>{undo.message}</span>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={revertLastChange} className="rounded-lg px-2 py-1 font-semibold underline">
+              Deshacer
+            </button>
+            <button
+              type="button"
+              onClick={() => setUndo(null)}
+              aria-label="Cerrar aviso"
+              className="rounded-lg px-2 py-1 opacity-70 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {existingAccounts.length === 0 ? (
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="text-lg font-semibold">Empieza creando tu primera cuenta</h2>
@@ -85,34 +144,12 @@ export function FinanceApp() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {recentlyDeleted && (
-            <div
-              role="status"
-              className="flex items-center justify-between gap-3 rounded-xl bg-zinc-900 px-4 py-3 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
-            >
-              <span>Movimiento eliminado.</span>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={undoDelete} className="rounded-lg px-2 py-1 font-semibold underline">
-                  Deshacer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecentlyDeleted(null)}
-                  aria-label="Cerrar aviso"
-                  className="rounded-lg px-2 py-1 opacity-70 hover:opacity-100"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-
           {openForm.type === "none" && (
             <div className="flex gap-2">
               <Button onClick={() => showForm({ type: "new-transaction" })} className="flex-1">
                 + Registrar movimiento
               </Button>
-              <Button variant="secondary" onClick={() => showForm({ type: "account" })}>
+              <Button variant="secondary" onClick={() => showForm({ type: "new-account" })}>
                 + Cuenta
               </Button>
             </div>
@@ -120,42 +157,44 @@ export function FinanceApp() {
 
           {openForm.type === "new-transaction" && (
             <TransactionForm
-              accounts={activeAccounts}
+              accounts={existingAccounts}
               balances={balances}
               currency={DEFAULT_CURRENCY}
-              onSave={async (transaction) => {
-                await saveTransaction(transaction);
-                closeForm();
-              }}
+              onSave={saveAndClose(saveTransaction)}
               onCancel={closeForm}
             />
           )}
 
           {openForm.type === "edit-transaction" && (
             <TransactionForm
-              // A new key per transaction resets the form when another one is chosen.
+              // A new key per record resets the form when another one is chosen.
               key={openForm.transaction.id}
-              accounts={activeAccounts}
+              accounts={existingAccounts}
               balances={balances}
               currency={DEFAULT_CURRENCY}
               transaction={openForm.transaction}
-              onSave={async (transaction) => {
-                await saveTransaction(transaction);
-                closeForm();
-              }}
+              onSave={saveAndClose(saveTransaction)}
               onCancel={closeForm}
               onDelete={() => deleteTransaction(openForm.transaction)}
             />
           )}
 
-          {openForm.type === "account" && (
+          {openForm.type === "new-account" && (
+            <AccountForm currency={DEFAULT_CURRENCY} onSave={saveAndClose(saveAccount)} onCancel={closeForm} />
+          )}
+
+          {openForm.type === "edit-account" && (
             <AccountForm
+              key={openForm.account.id}
               currency={DEFAULT_CURRENCY}
-              onSave={async (account) => {
-                await saveAccount(account);
-                closeForm();
-              }}
+              account={openForm.account}
+              removal={getAccountRemoval(openForm.account, data.transactions)}
+              onSave={saveAndClose(saveAccount)}
               onCancel={closeForm}
+              onRemove={() =>
+                removeAccount(openForm.account, getAccountRemoval(openForm.account, data.transactions))
+              }
+              onReactivate={() => reactivateAccount(openForm.account)}
             />
           )}
 
@@ -164,6 +203,7 @@ export function FinanceApp() {
             transactions={data.transactions}
             currency={DEFAULT_CURRENCY}
             onSelectTransaction={editTransaction}
+            onSelectAccount={(account) => showForm({ type: "edit-account", account })}
           />
         </div>
       )}

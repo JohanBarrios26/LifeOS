@@ -100,7 +100,8 @@ function isAccount(value: unknown): value is Account {
     ACCOUNT_TYPES.includes(value.type as Account["type"]) &&
     typeof value.currency === "string" &&
     Number.isInteger(value.openingBalance) &&
-    typeof value.openingDate === "string"
+    typeof value.openingDate === "string" &&
+    isOptionalString(value.archivedAt)
   );
 }
 

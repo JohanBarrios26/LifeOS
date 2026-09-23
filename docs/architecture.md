@@ -50,7 +50,19 @@ balance = openingBalance + money into the account − money out of the account
 - **Available balance** = sum of `cash`, `debit` and `savings` balances.
 - **Total debt** = sum of `credit` and `loan` balances (shown as a positive number).
 
-The form offers a **"Pago de deuda"** tab: it only lists available-money accounts as the source and credit cards or loans as the destination, but it is stored as a regular `transfer` (category "Pago de deuda" by default). Payments per debt are derived from transfers into each debt account.
+Paying a debt is a regular `transfer` into the credit card or loan. The form keeps three tabs (expense, income, transfer); when a transfer's destination is a debt, it shows how much is owed, offers "Pagar todo" and defaults the category to "Pago de deuda". Payments per debt are derived from transfers into each debt account.
+
+### Closing accounts
+
+`getAccountRemoval` decides how an account can leave the lists, so money never disappears from the totals:
+
+| Account | Action | Field |
+| --- | --- | --- |
+| No movements (probably created by mistake) | Delete | `deletedAt` |
+| History and a zero balance (e.g. a cancelled card) | Archive: history stays valid | `archivedAt` |
+| Still holds money or debt | Not allowed until it reaches zero | — |
+
+Archived accounts are hidden when recording new transactions but still appear when editing a transaction that uses them. An existing account can change type only within its group (money or debt), because the sign of its history depends on it.
 
 ### Interest, fees and installments
 

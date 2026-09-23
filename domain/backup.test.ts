@@ -7,8 +7,11 @@ const card = makeAccount({ id: "nu-card", type: "credit", openingBalance: -300_0
 const lunch = makeTransaction({ kind: "expense", fromAccountId: "debit", amount: 25_000, category: "Comida" });
 const deleted = makeTransaction({ amount: 10_000, fromAccountId: "debit", deletedAt: "2026-09-11T00:00:00.000Z" });
 
+// A fixed export time: using "now" would make two calls differ by a millisecond.
+const EXPORTED_AT = new Date("2026-09-23T20:00:00.000Z");
+
 function backupText(overrides: Record<string, unknown> = {}): string {
-  return JSON.stringify({ ...createBackup([debit, card], [lunch, deleted]), ...overrides });
+  return JSON.stringify({ ...createBackup([debit, card], [lunch, deleted], EXPORTED_AT), ...overrides });
 }
 
 describe("createBackup", () => {
@@ -30,6 +33,14 @@ describe("parseBackup", () => {
     const result = parseBackup(backupText());
 
     expect(result).toEqual({ ok: true, backup: JSON.parse(backupText()) });
+  });
+
+  it("keeps archived accounts, and still reads backups made before archiving existed", () => {
+    const closedCard = { ...card, archivedAt: "2026-09-22T00:00:00.000Z" };
+
+    const result = parseBackup(backupText({ accounts: [debit, closedCard] }));
+
+    expect(result.ok && result.backup.accounts).toEqual([debit, closedCard]);
   });
 
   it("rejects text that is not JSON", () => {

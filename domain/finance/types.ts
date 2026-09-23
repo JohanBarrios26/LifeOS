@@ -31,6 +31,11 @@ export interface Account extends BaseEntity {
   /** Balance when the account was added to LIFEOS. Negative for money owed (credit, loan). */
   openingBalance: Money;
   openingDate: LocalDate;
+  /**
+   * Set when the account is closed (e.g. a cancelled card). Unlike deletedAt, its history
+   * is still valid: it only leaves the lists. Only accounts with a zero balance are archived.
+   */
+  archivedAt?: string;
 }
 
 export const TRANSACTION_KINDS = ["income", "expense", "transfer", "adjustment"] as const;
