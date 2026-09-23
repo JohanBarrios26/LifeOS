@@ -2,11 +2,11 @@
 
 import { type FormEvent, useState } from "react";
 import { Button, ErrorList, Field, formCardClassName, inputClassName } from "@/components/form";
-import { createEntityFields } from "@/domain/entity";
+import { createEntityFields, markUpdated } from "@/domain/entity";
 import type { Account, CurrencyCode, Transaction } from "@/domain/finance/types";
 import { type TransactionInput, validateTransaction } from "@/domain/finance/validation";
 import { toLocalDate } from "@/lib/dates";
-import { parseAmount } from "@/lib/format";
+import { formatAmountInput, parseAmount } from "@/lib/format";
 import { LOCAL_USER_ID } from "@/lib/preferences";
 import { ACCOUNT_TYPE_LABELS, SUGGESTED_CATEGORIES, TRANSACTION_ERROR_MESSAGES } from "./labels";
 
@@ -29,12 +29,24 @@ const KIND_OPTIONS: { kind: FormKind; label: string; help: string }[] = [
 interface TransactionFormProps {
   accounts: Account[];
   currency: CurrencyCode;
+  /** The transaction being edited. Without it, the form records a new one. */
+  transaction?: Transaction;
   onSave: (transaction: Transaction) => Promise<void>;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
-export function TransactionForm({ accounts, currency, onSave, onCancel }: TransactionFormProps) {
-  const [kind, setKind] = useState<FormKind>("expense");
+export function TransactionForm({
+  accounts,
+  currency,
+  transaction,
+  onSave,
+  onCancel,
+  onDelete,
+}: TransactionFormProps) {
+  const [kind, setKind] = useState<FormKind>(
+    transaction && transaction.kind !== "adjustment" ? transaction.kind : "expense",
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -65,13 +77,15 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
     }
 
     setSaving(true);
-    await onSave({ ...createEntityFields(LOCAL_USER_ID), ...input });
+    await onSave(
+      transaction ? markUpdated(transaction, input) : { ...createEntityFields(LOCAL_USER_ID), ...input },
+    );
     setSaving(false);
   }
 
   return (
     <form onSubmit={handleSubmit} className={formCardClassName} noValidate>
-      <h2 className="text-lg font-semibold">Registrar movimiento</h2>
+      <h2 className="text-lg font-semibold">{transaction ? "Editar movimiento" : "Registrar movimiento"}</h2>
 
       <div role="radiogroup" aria-label="Tipo de movimiento" className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
         {KIND_OPTIONS.map((option) => (
@@ -101,6 +115,7 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
           name="amount"
           inputMode="numeric"
           placeholder="Ej: 50.000"
+          defaultValue={transaction ? formatAmountInput(transaction.amount, currency) : undefined}
           className={inputClassName}
           autoComplete="off"
         />
@@ -108,7 +123,12 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
 
       {needsSource && (
         <Field label="¿De dónde sale el dinero?" htmlFor="transaction-from">
-          <AccountSelect id="transaction-from" name="fromAccountId" accounts={accounts} />
+          <AccountSelect
+            id="transaction-from"
+            name="fromAccountId"
+            accounts={accounts}
+            defaultValue={transaction?.fromAccountId}
+          />
         </Field>
       )}
 
@@ -118,6 +138,7 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
             id="transaction-to"
             name="toAccountId"
             accounts={kind === "income" ? moneyAccounts : accounts}
+            defaultValue={transaction?.toAccountId}
           />
         </Field>
       )}
@@ -127,7 +148,7 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
           id="transaction-date"
           name="date"
           type="date"
-          defaultValue={toLocalDate()}
+          defaultValue={transaction?.date ?? toLocalDate()}
           className={inputClassName}
         />
       </Field>
@@ -138,6 +159,7 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
           name="category"
           list="transaction-categories"
           placeholder="Ej: Mercado"
+          defaultValue={transaction?.category}
           className={inputClassName}
           autoComplete="off"
         />
@@ -153,6 +175,7 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
           id="transaction-description"
           name="description"
           placeholder="Ej: Almuerzo con compañeros"
+          defaultValue={transaction?.description}
           className={inputClassName}
           autoComplete="off"
         />
@@ -162,19 +185,39 @@ export function TransactionForm({ accounts, currency, onSave, onCancel }: Transa
 
       <div className="flex gap-2">
         <Button type="submit" disabled={saving} className="flex-1">
-          {saving ? "Guardando…" : "Guardar movimiento"}
+          {saving ? "Guardando…" : transaction ? "Guardar cambios" : "Guardar movimiento"}
         </Button>
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
       </div>
+
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="self-center rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+        >
+          Eliminar movimiento
+        </button>
+      )}
     </form>
   );
 }
 
-function AccountSelect({ id, name, accounts }: { id: string; name: string; accounts: Account[] }) {
+function AccountSelect({
+  id,
+  name,
+  accounts,
+  defaultValue,
+}: {
+  id: string;
+  name: string;
+  accounts: Account[];
+  defaultValue?: string;
+}) {
   return (
-    <select id={id} name={name} defaultValue="" className={inputClassName}>
+    <select id={id} name={name} defaultValue={defaultValue ?? ""} className={inputClassName}>
       <option value="" disabled>
         Elige una cuenta
       </option>

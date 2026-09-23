@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { getAccountBalance, getAvailableBalance, getTotalDebt } from "@/domain/finance/balance";
 import type { Account, CurrencyCode, Money, Transaction } from "@/domain/finance/types";
 import { formatMoney, formatShortDate } from "@/lib/format";
@@ -9,16 +12,20 @@ interface FinanceDashboardProps {
   accounts: Account[];
   transactions: Transaction[];
   currency: CurrencyCode;
+  onSelectTransaction: (transaction: Transaction) => void;
 }
 
-export function FinanceDashboard({ accounts, transactions, currency }: FinanceDashboardProps) {
+export function FinanceDashboard({ accounts, transactions, currency, onSelectTransaction }: FinanceDashboardProps) {
+  const [showAll, setShowAll] = useState(false);
   const activeAccounts = accounts.filter((account) => !account.deletedAt);
   const accountNames = new Map(accounts.map((account) => [account.id, account.name]));
-  const recentTransactions = transactions
+  const activeTransactions = transactions
     .filter((transaction) => !transaction.deletedAt)
     // Newest first; on the same day, the one recorded last goes first.
-    .toSorted((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
-    .slice(0, RECENT_TRANSACTIONS_LIMIT);
+    .toSorted((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  const visibleTransactions = showAll
+    ? activeTransactions
+    : activeTransactions.slice(0, RECENT_TRANSACTIONS_LIMIT);
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,29 +71,52 @@ export function FinanceDashboard({ accounts, transactions, currency }: FinanceDa
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-          Movimientos recientes
-        </h2>
-        {recentTransactions.length === 0 && (
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            {showAll ? "Todos los movimientos" : "Movimientos recientes"}
+          </h2>
+          {activeTransactions.length > 0 && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Toca uno para editarlo</p>
+          )}
+        </div>
+        {activeTransactions.length === 0 && (
           <p className="rounded-2xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
             Aún no hay movimientos. Registra tu primer gasto o ingreso.
           </p>
         )}
-        <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white empty:hidden dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-          {recentTransactions.map((transaction) => (
-            <li key={transaction.id} className="flex items-center justify-between gap-4 px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate font-medium">
-                  {transaction.description ?? transaction.category ?? TRANSACTION_KIND_LABELS[transaction.kind]}
-                </p>
-                <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                  {formatShortDate(transaction.date)} · {describeAccounts(transaction, accountNames)}
-                </p>
-              </div>
-              <TransactionAmount transaction={transaction} currency={currency} />
-            </li>
-          ))}
+        <ul className="divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white empty:hidden dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+          {visibleTransactions.map((transaction) => {
+            const title =
+              transaction.description ?? transaction.category ?? TRANSACTION_KIND_LABELS[transaction.kind];
+            return (
+              <li key={transaction.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelectTransaction(transaction)}
+                  aria-label={`Editar movimiento: ${title}`}
+                  className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{title}</p>
+                    <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                      {formatShortDate(transaction.date)} · {describeAccounts(transaction, accountNames)}
+                    </p>
+                  </div>
+                  <TransactionAmount transaction={transaction} currency={currency} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
+        {activeTransactions.length > RECENT_TRANSACTIONS_LIMIT && (
+          <button
+            type="button"
+            onClick={() => setShowAll(!showAll)}
+            className="mt-2 w-full rounded-xl py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            {showAll ? "Ver solo los recientes" : `Ver todos (${activeTransactions.length})`}
+          </button>
+        )}
       </section>
     </div>
   );

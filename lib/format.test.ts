@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, formatShortDate, parseAmount } from "./format";
+import { formatAmountInput, formatMoney, formatShortDate, parseAmount } from "./format";
 
 // Intl uses non-breaking spaces; normalize them so expectations stay readable.
 const format = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\s/g, " ");
@@ -38,6 +38,24 @@ describe("parseAmount", () => {
     expect(parseAmount("-5.000", "COP")).toBeNull();
     expect(parseAmount("12,5", "COP")).toBeNull();
     expect(parseAmount("12,505", "USD")).toBeNull();
+  });
+});
+
+describe("formatAmountInput", () => {
+  it("writes amounts the way a person types them", () => {
+    expect(formatAmountInput(120_000, "COP")).toBe("120.000");
+    expect(formatAmountInput(1250, "USD")).toBe("12,50");
+  });
+
+  it("produces text that parseAmount reads back to the same amount", () => {
+    for (const [amount, currency] of [
+      [1_200_000, "COP"],
+      [5, "COP"],
+      [1250, "USD"],
+      [123_456_789, "USD"],
+    ] as const) {
+      expect(parseAmount(formatAmountInput(amount, currency), currency)).toBe(amount);
+    }
   });
 });
 

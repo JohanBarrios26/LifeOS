@@ -95,7 +95,8 @@ Open `http://localhost:3000` in your browser.
 - [x] Add local persistence (IndexedDB) behind a repository interface.
 - [x] Build the financial dashboard.
 - [x] Export and import backups as JSON files.
-- [ ] Edit and delete records.
+- [x] Edit and soft-delete transactions, with undo.
+- [ ] Edit and archive accounts.
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.
 - [ ] Add reports, charts, and date filters.

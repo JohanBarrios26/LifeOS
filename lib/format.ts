@@ -23,6 +23,19 @@ export function formatMoney(amount: Money, currency: CurrencyCode, locale = "es-
 }
 
 /**
+ * Writes an amount the way a person would type it, without the currency symbol,
+ * so parseAmount can read it back. E.g. formatAmountInput(120000, "COP") → "120.000".
+ */
+export function formatAmountInput(amount: Money, currency: CurrencyCode, locale = "es-CO"): string {
+  const digits = MINOR_UNIT_DIGITS[currency] ?? 2;
+
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(amount / 10 ** digits);
+}
+
+/**
  * Reads an amount typed by a person and returns it in minor units, or null if it is not valid.
  * Uses Colombian notation: "." separates thousands and "," separates decimals.
  * Examples: "1.200.000" COP → 1200000, "$ 50.000" COP → 50000, "12,50" USD → 1250.
