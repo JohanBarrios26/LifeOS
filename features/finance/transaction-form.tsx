@@ -37,6 +37,8 @@ interface TransactionFormProps {
   currency: CurrencyCode;
   /** The transaction being edited. Without it, the form records a new one. */
   transaction?: Transaction;
+  /** Values to start a new transaction with, e.g. what quick entry understood. */
+  draft?: TransactionInput;
   onSave: (transaction: Transaction) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => void;
@@ -47,14 +49,16 @@ export function TransactionForm({
   balances,
   currency,
   transaction,
+  draft,
   onSave,
   onCancel,
   onDelete,
 }: TransactionFormProps) {
+  const prefill = transaction ?? draft;
   const [kind, setKind] = useState<FormKind>(
-    transaction && transaction.kind !== "adjustment" ? transaction.kind : "expense",
+    prefill && prefill.kind !== "adjustment" ? prefill.kind : "expense",
   );
-  const [destinationId, setDestinationId] = useState(transaction?.toAccountId ?? "");
+  const [destinationId, setDestinationId] = useState(prefill?.toAccountId ?? "");
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const amountInput = useRef<HTMLInputElement>(null);
@@ -152,7 +156,9 @@ export function TransactionForm({
           name="amount"
           inputMode="numeric"
           placeholder="Ej: 50.000"
-          defaultValue={transaction ? formatAmountInput(transaction.amount, currency) : undefined}
+          defaultValue={
+            prefill && Number.isInteger(prefill.amount) ? formatAmountInput(prefill.amount, currency) : undefined
+          }
           className={inputClassName}
           autoComplete="off"
         />
@@ -163,7 +169,7 @@ export function TransactionForm({
           <select
             id="transaction-from"
             name="fromAccountId"
-            defaultValue={transaction?.fromAccountId ?? ""}
+            defaultValue={prefill?.fromAccountId ?? ""}
             className={inputClassName}
           >
             <AccountOptions accounts={selectableAccounts} describe={describe} />
@@ -205,7 +211,7 @@ export function TransactionForm({
           id="transaction-date"
           name="date"
           type="date"
-          defaultValue={transaction?.date ?? toLocalDate()}
+          defaultValue={prefill?.date ?? toLocalDate()}
           className={inputClassName}
         />
       </Field>
@@ -220,7 +226,7 @@ export function TransactionForm({
           name="category"
           list="transaction-categories"
           placeholder={payingDebt ? DEBT_PAYMENT_CATEGORY : "Ej: Mercado"}
-          defaultValue={transaction?.category}
+          defaultValue={prefill?.category}
           className={inputClassName}
           autoComplete="off"
         />
@@ -236,7 +242,7 @@ export function TransactionForm({
           id="transaction-description"
           name="description"
           placeholder="Ej: Almuerzo con compañeros"
-          defaultValue={transaction?.description}
+          defaultValue={prefill?.description}
           className={inputClassName}
           autoComplete="off"
         />

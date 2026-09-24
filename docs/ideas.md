@@ -27,8 +27,8 @@ Muchas ideas llamativas ya existen, pero **sueltas, cada una en su propia app**:
 
 La idea menos llamativa y la más importante: las apps de registro manual suelen morir porque registrar cansa. Sin poca fricción, las demás ideas no sirven.
 
-- **Estado:** pendiente.
-- **Encaja con:** el formulario actual (el texto se convierte en un `TransactionInput` y pasa por `validateTransaction`).
+- **Estado:** ✅ hecha (septiembre de 2026). Entiende montos colombianos ("25 mil", "25k", "1,5 millones", "30 lucas", "2 palos"), fechas ("ayer", "antier"), cuentas por nombre o tipo, categorías por palabras clave, ingresos, pagos de deuda y ahorro. Muestra lo que entendió antes de guardar.
+- **Siguiente paso posible:** aprender de las correcciones de la persona (si siempre cambia "Transporte" por "Gasolina", sugerirlo).
 
 ### 2. "Fecha de libertad" de deudas, que se mueve con cada abono
 

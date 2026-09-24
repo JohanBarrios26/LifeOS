@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { toLocalDate } from "./dates";
+import { shiftDate, toLocalDate } from "./dates";
+
+describe("shiftDate", () => {
+  it("moves back and forward across months and years", () => {
+    expect(shiftDate("2026-09-23", -1)).toBe("2026-09-22");
+    expect(shiftDate("2026-03-01", -1)).toBe("2026-02-28");
+    expect(shiftDate("2026-12-31", 1)).toBe("2027-01-01");
+  });
+});
 
 describe("toLocalDate", () => {
   it("uses the local calendar day, even late at night", () => {

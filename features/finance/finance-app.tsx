@@ -6,16 +6,19 @@ import { markDeleted, markUpdated, restoreDeleted } from "@/domain/entity";
 import { type AccountRemoval, getAccountRemoval } from "@/domain/finance/accounts";
 import { getAccountBalance } from "@/domain/finance/balance";
 import type { Account, Transaction } from "@/domain/finance/types";
+import type { TransactionInput } from "@/domain/finance/validation";
 import { BackupPanel } from "@/features/backup/backup-panel";
+import { formatMoney } from "@/lib/format";
 import { DEFAULT_CURRENCY } from "@/lib/preferences";
 import { AccountForm } from "./account-form";
 import { FinanceDashboard } from "./finance-dashboard";
+import { QuickEntryBox } from "./quick-entry-box";
 import { TransactionForm } from "./transaction-form";
 import { useFinanceData } from "./use-finance-data";
 
 type OpenForm =
   | { type: "none" }
-  | { type: "new-transaction" }
+  | { type: "new-transaction"; draft?: TransactionInput }
   | { type: "edit-transaction"; transaction: Transaction }
   | { type: "new-account" }
   | { type: "edit-account"; account: Account };
@@ -46,6 +49,15 @@ export function FinanceApp() {
     if (transaction.kind !== "adjustment") {
       showForm({ type: "edit-transaction", transaction });
     }
+  }
+
+  async function saveQuickEntry(transaction: Transaction) {
+    await saveTransaction(transaction);
+    const title = transaction.description ?? transaction.category ?? "Movimiento";
+    setUndo({
+      message: `Registrado: ${title}, ${formatMoney(transaction.amount, DEFAULT_CURRENCY)}.`,
+      revert: () => saveTransaction(markDeleted(transaction)),
+    });
   }
 
   async function deleteTransaction(transaction: Transaction) {
@@ -145,14 +157,23 @@ export function FinanceApp() {
       ) : (
         <div className="flex flex-col gap-6">
           {openForm.type === "none" && (
-            <div className="flex gap-2">
-              <Button onClick={() => showForm({ type: "new-transaction" })} className="flex-1">
-                + Registrar movimiento
-              </Button>
-              <Button variant="secondary" onClick={() => showForm({ type: "new-account" })}>
-                + Cuenta
-              </Button>
-            </div>
+            <>
+              <QuickEntryBox
+                accounts={existingAccounts.filter((account) => !account.archivedAt)}
+                transactions={data.transactions}
+                currency={DEFAULT_CURRENCY}
+                onSave={saveQuickEntry}
+                onAdjust={(draft) => showForm({ type: "new-transaction", draft })}
+              />
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => showForm({ type: "new-transaction" })} className="flex-1">
+                  Formulario completo
+                </Button>
+                <Button variant="secondary" onClick={() => showForm({ type: "new-account" })}>
+                  + Cuenta
+                </Button>
+              </div>
+            </>
           )}
 
           {openForm.type === "new-transaction" && (
@@ -160,6 +181,7 @@ export function FinanceApp() {
               accounts={existingAccounts}
               balances={balances}
               currency={DEFAULT_CURRENCY}
+              draft={openForm.draft}
               onSave={saveAndClose(saveTransaction)}
               onCancel={closeForm}
             />
