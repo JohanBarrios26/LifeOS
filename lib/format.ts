@@ -10,6 +10,16 @@ const MINOR_UNIT_DIGITS: Record<CurrencyCode, number> = {
   EUR: 2,
 };
 
+/** Converts minor units to the currency's main unit, e.g. 1250 USD cents → 12.5 dollars. */
+export function toMajorUnits(amount: Money, currency: CurrencyCode): number {
+  return amount / 10 ** (MINOR_UNIT_DIGITS[currency] ?? 2);
+}
+
+/** Digits a currency shows after the decimal point in LIFEOS: 0 for COP, 2 for USD. */
+export function currencyDigits(currency: CurrencyCode): number {
+  return MINOR_UNIT_DIGITS[currency] ?? 2;
+}
+
 /** Formats an amount stored in minor units, e.g. formatMoney(1580000, "COP") → "$ 1.580.000". */
 export function formatMoney(amount: Money, currency: CurrencyCode, locale = "es-CO"): string {
   const digits = MINOR_UNIT_DIGITS[currency] ?? 2;
@@ -50,6 +60,15 @@ export function parseAmount(text: string, currency: CurrencyCode): Money | null 
   }
   // Math.round fixes floating-point noise such as 0.29 * 100 = 28.999999999999996.
   return Math.round(Number(normalized) * 10 ** digits);
+}
+
+/** Formats a month for titles, e.g. formatMonth("2026-09") → "Septiembre de 2026". */
+export function formatMonth(month: string, locale = "es-CO"): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const text = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(year, monthNumber - 1, 1)),
+  );
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
 /** Formats a local calendar date, e.g. formatShortDate("2026-09-15") → "15 de sept". */

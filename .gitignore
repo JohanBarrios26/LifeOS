@@ -33,8 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# LIFEOS backups contain real personal data: never commit them
+# LIFEOS backups and reports contain real personal data: never commit them
 lifeos-copia-*.json
+lifeos-reporte-*
 
 # vercel
 .vercel

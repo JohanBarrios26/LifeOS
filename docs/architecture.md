@@ -74,6 +74,16 @@ LIFEOS does **not** calculate interest from a rate. Banks use daily balances, di
 
 Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and `DebtPayment` entities: transfers, refunds, card interest and cash advances fit without new entities, and one calculation serves every account. `availableBalance` and `totalDebt` are never stored.
 
+## Monthly report
+
+`getMonthlySummary` recalculates a month from the stored transactions; nothing is saved.
+
+- **Expenses** count spending when it happens, however it was paid. A card purchase is an expense that day; paying the card later is a **debt payment**, not a second expense. Transfers between own accounts are neither.
+- **Interest** is the total of expenses in the "Intereses" category.
+- **End-of-month position** uses only the accounts opened and transactions dated up to the month's last day.
+
+The report downloads as Excel (`write-excel-file`) or PDF (`jspdf` + `jspdf-autotable`). Both files are built from the same tables (`buildReportTables`) so they always match, and the libraries load only when a download is requested. The PDF uses the built-in Helvetica font, which only covers WinAnsi characters: `pdfText` replaces or removes anything else.
+
 ## Data conventions
 
 - **Money is an integer** in the currency's minor unit (cents for USD, pesos for COP). Floating-point math (`0.1 + 0.2 !== 0.3`) must never touch money.

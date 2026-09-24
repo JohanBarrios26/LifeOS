@@ -97,6 +97,7 @@ Open `http://localhost:3000` in your browser.
 - [x] Export and import backups as JSON files.
 - [x] Edit and soft-delete transactions, with undo.
 - [x] Edit, archive and delete accounts.
+- [x] Monthly report with spending by category, downloadable as Excel or PDF.
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.
 - [ ] Add reports, charts, and date filters.

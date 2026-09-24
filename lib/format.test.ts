@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmountInput, formatMoney, formatShortDate, parseAmount } from "./format";
+import { formatAmountInput, formatMoney, formatMonth, formatShortDate, parseAmount, toMajorUnits } from "./format";
 
 // Intl uses non-breaking spaces; normalize them so expectations stay readable.
 const format = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\s/g, " ");
@@ -56,6 +56,20 @@ describe("formatAmountInput", () => {
     ] as const) {
       expect(parseAmount(formatAmountInput(amount, currency), currency)).toBe(amount);
     }
+  });
+});
+
+describe("toMajorUnits", () => {
+  it("converts stored amounts to pesos or dollars", () => {
+    expect(toMajorUnits(1_580_000, "COP")).toBe(1_580_000);
+    expect(toMajorUnits(1250, "USD")).toBe(12.5);
+  });
+});
+
+describe("formatMonth", () => {
+  it("writes the month name in Spanish, capitalized for titles", () => {
+    expect(formatMonth("2026-09")).toBe("Septiembre de 2026");
+    expect(formatMonth("2027-01")).toBe("Enero de 2027");
   });
 });
 
