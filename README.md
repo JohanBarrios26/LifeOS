@@ -98,6 +98,10 @@ Open `http://localhost:3000` in your browser.
 - [x] Edit and soft-delete transactions, with undo.
 - [x] Edit, archive and delete accounts.
 - [x] Monthly report with spending by category, downloadable as Excel or PDF.
+- [x] Quick entry in plain Spanish ("almuerzo 25 mil con la nu").
+- [x] Installable app (PWA) with home-screen shortcuts.
+- [ ] Publish online (HTTPS) to install it on a phone.
+- [ ] Work offline (service worker).
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.
 - [ ] Add reports, charts, and date filters.

@@ -74,6 +74,18 @@ LIFEOS does **not** calculate interest from a rate. Banks use daily balances, di
 
 Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and `DebtPayment` entities: transfers, refunds, card interest and cash advances fit without new entities, and one calculation serves every account. `availableBalance` and `totalDebt` are never stored.
 
+## Quick entry
+
+`parseQuickEntry` turns a sentence ("almuerzo 25 mil con la nu") into a `TransactionInput` draft. It never saves: the person sees what was understood and confirms, adjusts it in the full form, or completes what is missing. The draft still goes through `validateTransaction`.
+
+- Amounts: "25.000", "$25.000", "25 mil", "25k", "1,5 millones", "30 lucas", "2 palos". With several numbers, the one written as money wins.
+- Accounts: by a word from their name ("nu") or by type ("efectivo", "débito") when only one account has that type. If none is mentioned, the usual account is suggested and marked as a guess.
+- Kind: income words ("salario", "prima"), a payment word plus a debt account ("pago nu"), or a savings word plus a savings account; otherwise an expense.
+
+## Installable app (PWA)
+
+`app/manifest.ts` describes the app for phones (name, icons, colors and the "Registrar" and "Reporte" shortcuts). Icons are generated from one SVG with `npm run icons`. Installing requires HTTPS (localhost counts as secure). Offline caching with a service worker is not implemented yet.
+
 ## Monthly report
 
 `getMonthlySummary` recalculates a month from the stored transactions; nothing is saved.
