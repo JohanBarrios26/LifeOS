@@ -65,7 +65,7 @@ Repository interface
 localStorage first → database and sync later
 ```
 
-Read the detailed architectural decisions in [docs/architecture.md](docs/architecture.md).
+Read the detailed architectural decisions in [docs/architecture.md](docs/architecture.md). Future ideas that could set LIFEOS apart are collected in [docs/ideas.md](docs/ideas.md).
 
 ## Tech stack
 
