@@ -1,22 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
+import type { BackupRecords } from "@/domain/backup";
 import type { Account, Transaction } from "@/domain/finance/types";
-import { getFinanceRepository } from "@/repositories";
+import type { Profile } from "@/domain/profile";
+import { getFinanceRepository, getProfileRepository } from "@/repositories";
 
 interface FinanceData {
   accounts: Account[];
   transactions: Transaction[];
+  /** Undefined until the person goes through the welcome step. */
+  profile: Profile | undefined;
 }
 
 async function loadFinanceData(): Promise<FinanceData> {
   const repository = getFinanceRepository();
-  const [accounts, transactions] = await Promise.all([
+  const [accounts, transactions, profile] = await Promise.all([
     repository.listAccounts(),
     repository.listTransactions(),
+    getProfileRepository().getProfile(),
   ]);
-  return { accounts, transactions };
+  return { accounts, transactions, profile };
 }
 
-/** Loads the financial records saved in this browser and saves new ones. */
+/** Loads the records saved in this browser (finances and profile) and saves new ones. */
 export function useFinanceData() {
   const [data, setData] = useState<FinanceData | null>(null);
   const [failed, setFailed] = useState(false);
@@ -44,10 +49,18 @@ export function useFinanceData() {
     setData(await loadFinanceData());
   }, []);
 
-  const importRecords = useCallback(async (records: FinanceData) => {
-    await getFinanceRepository().saveAll(records);
+  const saveProfile = useCallback(async (profile: Profile) => {
+    await getProfileRepository().saveProfile(profile);
     setData(await loadFinanceData());
   }, []);
 
-  return { data, failed, saveAccount, saveTransaction, importRecords };
+  const importRecords = useCallback(async ({ accounts, transactions, profile }: BackupRecords) => {
+    await getFinanceRepository().saveAll({ accounts, transactions });
+    if (profile) {
+      await getProfileRepository().saveProfile(profile);
+    }
+    setData(await loadFinanceData());
+  }, []);
+
+  return { data, failed, saveAccount, saveTransaction, saveProfile, importRecords };
 }

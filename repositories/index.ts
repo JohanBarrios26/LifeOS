@@ -1,11 +1,17 @@
 import type { FinanceRepository } from "./finance-repository";
 import { createIndexedDbFinanceRepository } from "./indexeddb/indexeddb-finance-repository";
+import { createIndexedDbProfileRepository } from "./indexeddb/indexeddb-profile-repository";
 import { LifeosDatabase } from "./indexeddb/lifeos-database";
+import type { ProfileRepository } from "./profile-repository";
 
-let financeRepository: FinanceRepository | undefined;
+// Browser only: IndexedDB does not exist on the server. Created on first use and then reused.
+let database: LifeosDatabase | undefined;
+const getDatabase = () => (database ??= new LifeosDatabase());
 
-/** The repository the app uses. Browser only: IndexedDB does not exist on the server. */
 export function getFinanceRepository(): FinanceRepository {
-  financeRepository ??= createIndexedDbFinanceRepository(new LifeosDatabase());
-  return financeRepository;
+  return createIndexedDbFinanceRepository(getDatabase());
+}
+
+export function getProfileRepository(): ProfileRepository {
+  return createIndexedDbProfileRepository(getDatabase());
 }

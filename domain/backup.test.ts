@@ -1,22 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { BACKUP_SCHEMA_VERSION, createBackup, parseBackup } from "./backup";
 import { makeAccount, makeTransaction } from "./finance/test-factories";
+import type { Profile } from "./profile";
 
 const debit = makeAccount({ id: "debit", openingBalance: 500_000 });
 const card = makeAccount({ id: "nu-card", type: "credit", openingBalance: -300_000 });
 const lunch = makeTransaction({ kind: "expense", fromAccountId: "debit", amount: 25_000, category: "Comida" });
 const deleted = makeTransaction({ amount: 10_000, fromAccountId: "debit", deletedAt: "2026-09-11T00:00:00.000Z" });
+const profile: Profile = {
+  id: "profile",
+  userId: "user-1",
+  createdAt: "2026-09-25T00:00:00.000Z",
+  updatedAt: "2026-09-25T00:00:00.000Z",
+  displayName: "Camila",
+};
 
 // A fixed export time: using "now" would make two calls differ by a millisecond.
 const EXPORTED_AT = new Date("2026-09-23T20:00:00.000Z");
 
 function backupText(overrides: Record<string, unknown> = {}): string {
-  return JSON.stringify({ ...createBackup([debit, card], [lunch, deleted], EXPORTED_AT), ...overrides });
+  return JSON.stringify({
+    ...createBackup({ accounts: [debit, card], transactions: [lunch, deleted], profile }, EXPORTED_AT),
+    ...overrides,
+  });
 }
 
 describe("createBackup", () => {
-  it("includes every record, deleted ones too, with the format version and export time", () => {
-    const backup = createBackup([debit, card], [lunch, deleted], new Date("2026-09-23T20:00:00.000Z"));
+  it("includes every record, deleted ones too, the profile, the format version and export time", () => {
+    const backup = createBackup({ accounts: [debit, card], transactions: [lunch, deleted], profile }, EXPORTED_AT);
 
     expect(backup).toEqual({
       app: "lifeos",
@@ -24,6 +35,7 @@ describe("createBackup", () => {
       exportedAt: "2026-09-23T20:00:00.000Z",
       accounts: [debit, card],
       transactions: [lunch, deleted],
+      profile,
     });
   });
 });
@@ -33,6 +45,20 @@ describe("parseBackup", () => {
     const result = parseBackup(backupText());
 
     expect(result).toEqual({ ok: true, backup: JSON.parse(backupText()) });
+  });
+
+  it("still reads backups made before the profile existed", () => {
+    const result = parseBackup(backupText({ profile: undefined }));
+
+    expect(result.ok && result.backup.profile).toBeUndefined();
+    expect(result.ok && result.backup.accounts).toEqual([debit, card]);
+  });
+
+  it("rejects a damaged profile", () => {
+    expect(parseBackup(backupText({ profile: { ...profile, displayName: 42 } }))).toEqual({
+      ok: false,
+      error: "invalid_records",
+    });
   });
 
   it("keeps archived accounts, and still reads backups made before archiving existed", () => {

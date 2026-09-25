@@ -110,7 +110,20 @@ Now:   FinanceRepository interface + IndexedDB (Dexie) in the browser
 Later: repository implementation backed by PostgreSQL and object storage
 ```
 
-Screens call `getFinanceRepository()` and never touch IndexedDB directly.
+Screens call `getFinanceRepository()` and `getProfileRepository()` and never touch IndexedDB directly.
+
+### Database versions
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1 | Sep 2026 | `accounts`, `transactions` |
+| 2 | Sep 2026 | `profile` (how the person wants to be called) |
+
+A shipped version is never edited: each change is a new version, and Dexie upgrades existing browsers without touching their data. `lifeos-database.test.ts` opens a version-1 database with the current code to prove it.
+
+## Profile
+
+Each person chooses how LIFEOS greets them on the welcome step, or prefers not to say. The name lives in the browser like every other record (one `Profile` with id `"profile"`), is included in backups, and never appears in the code.
 
 ## Backups
 

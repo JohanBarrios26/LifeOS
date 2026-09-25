@@ -100,6 +100,7 @@ Open `http://localhost:3000` in your browser.
 - [x] Monthly report with spending by category, downloadable as Excel or PDF.
 - [x] Quick entry in plain Spanish ("almuerzo 25 mil con la nu").
 - [x] Installable app (PWA) with home-screen shortcuts.
+- [x] Welcome step where each person chooses how to be called.
 - [ ] Publish online (HTTPS) to install it on a phone.
 - [ ] Work offline (service worker).
 - [ ] Add quantitative habit tracking.

@@ -4,6 +4,7 @@ import {
   type Account,
   type Transaction,
 } from "./finance/types";
+import type { Profile } from "./profile";
 
 /**
  * Version of the backup file format. Increase it when the stored records change shape,
@@ -17,6 +18,14 @@ export interface LifeosBackup {
   exportedAt: string;
   accounts: Account[];
   transactions: Transaction[];
+  /** Added in September 2026: older backups do not have it, and are still valid. */
+  profile?: Profile;
+}
+
+export interface BackupRecords {
+  accounts: Account[];
+  transactions: Transaction[];
+  profile?: Profile;
 }
 
 export type BackupError = "invalid_json" | "not_a_lifeos_backup" | "unsupported_version" | "invalid_records";
@@ -24,13 +33,17 @@ export type BackupError = "invalid_json" | "not_a_lifeos_backup" | "unsupported_
 export type ParsedBackup = { ok: true; backup: LifeosBackup } | { ok: false; error: BackupError };
 
 /** Every record is included, deleted ones too, so a restore brings back the full history. */
-export function createBackup(accounts: Account[], transactions: Transaction[], now: Date = new Date()): LifeosBackup {
+export function createBackup(
+  { accounts, transactions, profile }: BackupRecords,
+  now: Date = new Date(),
+): LifeosBackup {
   return {
     app: "lifeos",
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: now.toISOString(),
     accounts,
     transactions,
+    ...(profile && { profile }),
   };
 }
 
@@ -57,7 +70,8 @@ export function parseBackup(text: string): ParsedBackup {
     !Array.isArray(data.accounts) ||
     !Array.isArray(data.transactions) ||
     !data.accounts.every(isAccount) ||
-    !data.transactions.every(isTransaction)
+    !data.transactions.every(isTransaction) ||
+    (data.profile !== undefined && !isProfile(data.profile))
   ) {
     return { ok: false, error: "invalid_records" };
   }
@@ -70,6 +84,7 @@ export function parseBackup(text: string): ParsedBackup {
       exportedAt: data.exportedAt,
       accounts: data.accounts,
       transactions: data.transactions,
+      ...(data.profile !== undefined && { profile: data.profile }),
     },
   };
 }
@@ -103,6 +118,10 @@ function isAccount(value: unknown): value is Account {
     typeof value.openingDate === "string" &&
     isOptionalString(value.archivedAt)
   );
+}
+
+function isProfile(value: unknown): value is Profile {
+  return isObject(value) && hasEntityFields(value) && typeof value.displayName === "string";
 }
 
 function isTransaction(value: unknown): value is Transaction {

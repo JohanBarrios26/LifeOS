@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { Account, Transaction } from "@/domain/finance/types";
+import type { Profile } from "@/domain/profile";
 
 /**
  * The IndexedDB database inside the browser.
@@ -10,6 +11,7 @@ import type { Account, Transaction } from "@/domain/finance/types";
 export class LifeosDatabase extends Dexie {
   accounts!: EntityTable<Account, "id">;
   transactions!: EntityTable<Transaction, "id">;
+  profile!: EntityTable<Profile, "id">;
 
   constructor(name = "lifeos") {
     super(name);
@@ -18,6 +20,10 @@ export class LifeosDatabase extends Dexie {
     this.version(1).stores({
       accounts: "id, userId, type",
       transactions: "id, userId, date, fromAccountId, toAccountId",
+    });
+    // Version 2 (September 2026): the person's profile. Accounts and transactions are kept as they are.
+    this.version(2).stores({
+      profile: "id",
     });
   }
 }

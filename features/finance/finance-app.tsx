@@ -7,7 +7,9 @@ import { type AccountRemoval, getAccountRemoval } from "@/domain/finance/account
 import { getAccountBalance } from "@/domain/finance/balance";
 import type { Account, Transaction } from "@/domain/finance/types";
 import type { TransactionInput } from "@/domain/finance/validation";
+import { greeting, type Profile } from "@/domain/profile";
 import { BackupPanel } from "@/features/backup/backup-panel";
+import { NameForm } from "@/features/profile/name-form";
 import { formatMoney } from "@/lib/format";
 import { DEFAULT_CURRENCY } from "@/lib/preferences";
 import { AccountForm } from "./account-form";
@@ -21,7 +23,8 @@ type OpenForm =
   | { type: "new-transaction"; draft?: TransactionInput }
   | { type: "edit-transaction"; transaction: Transaction }
   | { type: "new-account" }
-  | { type: "edit-account"; account: Account };
+  | { type: "edit-account"; account: Account }
+  | { type: "profile" };
 
 /** A change the person can take back from the notice at the top. */
 interface Undo {
@@ -30,7 +33,7 @@ interface Undo {
 }
 
 export function FinanceApp() {
-  const { data, failed, saveAccount, saveTransaction, importRecords } = useFinanceData();
+  const { data, failed, saveAccount, saveTransaction, saveProfile, importRecords } = useFinanceData();
   const [openForm, setOpenForm] = useState<OpenForm>({ type: "none" });
   const [undo, setUndo] = useState<Undo | null>(null);
 
@@ -144,7 +147,32 @@ export function FinanceApp() {
         </div>
       )}
 
-      {existingAccounts.length === 0 ? (
+      {data.profile ? (
+        <header className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">{greeting(data.profile)}</h1>
+            <p className="text-zinc-600 dark:text-zinc-400">Así están tus finanzas hoy.</p>
+          </div>
+          {openForm.type !== "profile" && (
+            <button
+              type="button"
+              onClick={() => showForm({ type: "profile" })}
+              className="shrink-0 rounded-lg px-2 py-1 text-sm text-zinc-500 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              {data.profile.displayName ? "Cambiar nombre" : "Poner mi nombre"}
+            </button>
+          )}
+        </header>
+      ) : (
+        <Welcome onSave={saveProfile} />
+      )}
+
+      {openForm.type === "profile" && data.profile && (
+        <NameForm profile={data.profile} onSave={saveAndClose(saveProfile)} onCancel={closeForm} />
+      )}
+
+      {/* The rest waits until the person has gone through the welcome step. */}
+      {!data.profile ? null : existingAccounts.length === 0 ? (
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="text-lg font-semibold">Empieza creando tu primera cuenta</h2>
@@ -230,8 +258,30 @@ export function FinanceApp() {
         </div>
       )}
 
-      {/* Same position on both screens, so its message survives the switch after a first import. */}
-      <BackupPanel accounts={data.accounts} transactions={data.transactions} onImport={importRecords} />
+      {/* Same position on every screen, so its message survives the switch after a first import. */}
+      <BackupPanel
+        accounts={data.accounts}
+        transactions={data.transactions}
+        profile={data.profile}
+        onImport={importRecords}
+      />
+    </div>
+  );
+}
+
+function Welcome({ onSave }: { onSave: (profile: Profile) => Promise<void> }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Te damos la bienvenida a LIFEOS</h1>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Registra los hechos importantes de tu vida y entiende tu progreso con datos reales.
+        </p>
+      </div>
+      <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+        🔒 Tus datos se guardan solo en este dispositivo. Nadie más puede verlos, ni siquiera quien creó LIFEOS.
+      </p>
+      <NameForm onSave={onSave} />
     </div>
   );
 }

@@ -2,8 +2,9 @@
 
 import { type ChangeEvent, useRef, useState } from "react";
 import { Button } from "@/components/form";
-import { type BackupError, createBackup, parseBackup } from "@/domain/backup";
+import { type BackupError, type BackupRecords, createBackup, parseBackup } from "@/domain/backup";
 import type { Account, Transaction } from "@/domain/finance/types";
+import type { Profile } from "@/domain/profile";
 import { toLocalDate } from "@/lib/dates";
 import { downloadJson } from "@/lib/download";
 
@@ -19,17 +20,18 @@ type Status = { tone: "success" | "error"; message: string };
 interface BackupPanelProps {
   accounts: Account[];
   transactions: Transaction[];
-  onImport: (records: { accounts: Account[]; transactions: Transaction[] }) => Promise<void>;
+  profile: Profile | undefined;
+  onImport: (records: BackupRecords) => Promise<void>;
 }
 
-export function BackupPanel({ accounts, transactions, onImport }: BackupPanelProps) {
+export function BackupPanel({ accounts, transactions, profile, onImport }: BackupPanelProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [importing, setImporting] = useState(false);
   const hasData = accounts.length > 0 || transactions.length > 0;
 
   function handleExport() {
-    downloadJson(`lifeos-copia-${toLocalDate()}.json`, createBackup(accounts, transactions));
+    downloadJson(`lifeos-copia-${toLocalDate()}.json`, createBackup({ accounts, transactions, profile }));
     setStatus({
       tone: "success",
       message: "Copia descargada. Guárdala en un lugar privado: contiene tu información financiera.",

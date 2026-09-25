@@ -3,11 +3,7 @@ import { FinanceApp } from "@/features/finance/finance-app";
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-4 pb-8">
-      <header>
-        <h1 className="text-2xl font-semibold">Hola, Johan 👋</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">Así están tus finanzas hoy.</p>
-      </header>
-
+      {/* The greeting lives inside FinanceApp: the name is stored in the browser, not in the code. */}
       <FinanceApp />
     </main>
   );
