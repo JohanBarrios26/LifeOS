@@ -124,7 +124,7 @@ export const SCENARIO_GROUPS: ScenarioGroup[] = [
         id: "install",
         title: "Instalarla como app",
         steps: [
-          "Android (Chrome): menú ⋮ → “Instalar app”.",
+          "Android: en Inicio toca “Instalar LIFEOS” (o en Chrome: menú ⋮ → “Instalar app”). No uses el botón de descarga ⬇.",
           "iPhone (Safari): botón compartir → “Agregar a inicio”.",
           "Ábrela desde el ícono.",
         ],

@@ -84,7 +84,15 @@ Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and
 
 ## Installable app (PWA)
 
-`app/manifest.ts` describes the app for phones (name, icons, colors and the "Registrar" and "Reporte" shortcuts). Icons are generated from one SVG with `npm run icons`. Installing requires HTTPS (localhost counts as secure). Offline caching with a service worker is not implemented yet.
+`app/manifest.ts` describes the app for phones (name, icons, colors and the "Registrar" and "Reporte" shortcuts). Icons are generated from one SVG with `npm run icons`. Installing requires HTTPS (localhost counts as secure).
+
+Chrome on Android only offers "Install app" (and fires `beforeinstallprompt`, which `InstallPrompt` turns into an "Instalar LIFEOS" button) when a service worker with a `fetch` handler exists. Without it, the menu only offers a shortcut, and people end up pressing the download button, which saves the page as a file.
+
+`public/sw.js` is that service worker. It is registered only in production builds (it would interfere with live reloading in development) and caches only the app itself:
+
+- **Pages:** network first, so each deploy arrives; the last copy is used offline.
+- **`/_next/static/` and `/icons/`:** cache first; their file names change with every build.
+- Personal data never passes through it: it lives in IndexedDB. The file is served with `no-cache` (see `next.config.ts`) so phones pick up new versions.
 
 ## Tester guide
 

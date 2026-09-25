@@ -103,7 +103,7 @@ Open `http://localhost:3000` in your browser.
 - [x] Welcome step where each person chooses how to be called.
 - [x] Publish online (HTTPS) to install it on a phone: [life-os-green-ten.vercel.app](https://life-os-green-ten.vercel.app).
 - [x] In-app guide for testers at `/probar`, with a shareable report.
-- [ ] Work offline (service worker).
+- [x] Work offline and install as a real app on Android (service worker).
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.
 - [ ] Add reports, charts, and date filters.

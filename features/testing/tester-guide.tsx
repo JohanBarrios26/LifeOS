@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { Button, inputClassName } from "@/components/form";
+import { useIsBrowser } from "@/lib/use-is-browser";
 import { ALL_SCENARIOS, OPEN_QUESTIONS, SCENARIO_GROUPS, type Scenario } from "./scenarios";
 import {
   buildTesterReport,
@@ -17,14 +18,6 @@ const STORAGE_KEY = "lifeos-tester-guide";
 const VERSION = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
 
 // The guide reads this browser's saved answers, so it only renders in the browser.
-const subscribeToNothing = () => () => {};
-const useIsBrowser = () =>
-  useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
-  );
-
 export function TesterGuide() {
   return useIsBrowser() ? <Guide /> : <p className="text-zinc-500 dark:text-zinc-400">Cargando la guía…</p>;
 }
