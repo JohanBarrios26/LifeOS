@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { buildTesterReport, describeDevice, EMPTY_ANSWERS } from "./tester-report";
+import { buildTesterReport, describeDevice, EMPTY_ANSWERS, whatsAppLink } from "./tester-report";
+
+describe("whatsAppLink", () => {
+  it("opens a chat with the number and the report already written", () => {
+    expect(whatsAppLink("573001234567", "Hola ✅\nLínea 2")).toBe(
+      "https://wa.me/573001234567?text=Hola%20%E2%9C%85%0AL%C3%ADnea%202",
+    );
+  });
+
+  it("ignores spaces, plus signs and dashes in the number", () => {
+    expect(whatsAppLink("+57 300-123-4567", "x")).toBe("https://wa.me/573001234567?text=x");
+  });
+
+  it("returns nothing when no valid number is configured", () => {
+    expect(whatsAppLink(undefined, "x")).toBeNull();
+    expect(whatsAppLink("", "x")).toBeNull();
+    expect(whatsAppLink("12345", "x")).toBeNull();
+  });
+});
 
 const scenarios = [
   { id: "welcome", title: "Bienvenida", steps: ["…"], expected: "…" },

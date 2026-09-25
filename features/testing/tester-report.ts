@@ -51,6 +51,18 @@ export function buildTesterReport(
     .trim();
 }
 
+/**
+ * A link that opens WhatsApp with the report already written, addressed to `phoneNumber`
+ * (international format, e.g. "573001234567"). Null when no valid number is configured.
+ */
+export function whatsAppLink(phoneNumber: string | undefined, text: string): string | null {
+  const digits = (phoneNumber ?? "").replace(/\D/g, "");
+  if (digits.length < 10) {
+    return null;
+  }
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
 /** A short, readable description of the device, e.g. "Android · Chrome · instalada como app". */
 export function describeDevice(userAgent: string, installed: boolean): string {
   const system = /iPhone/.test(userAgent)

@@ -85,6 +85,16 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
+### Configuration
+
+Settings that must not live in the code go in `.env.local` (ignored by Git) and, for the published app, in Vercel → Settings → Environment Variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_FEEDBACK_WHATSAPP` | WhatsApp number (country code + number, digits only) that receives testers' reports. Without it, the guide offers share/copy instead. |
+
+`NEXT_PUBLIC_` values are written into the app when it is built: after changing one in Vercel, redeploy.
+
 ## Roadmap
 
 - [x] Initialize the Next.js project and GitHub repository.

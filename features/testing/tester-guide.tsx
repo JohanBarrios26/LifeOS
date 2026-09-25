@@ -11,11 +11,14 @@ import {
   EMPTY_ANSWERS,
   type ScenarioResult,
   type TesterAnswers,
+  whatsAppLink,
 } from "./tester-report";
 
 const STORAGE_KEY = "lifeos-tester-guide";
 // Vercel provides the commit of each deploy; it tells which version a report refers to.
 const VERSION = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
+// Who receives the reports. Set in .env.local and in Vercel's environment variables, never in the code.
+const FEEDBACK_WHATSAPP = process.env.NEXT_PUBLIC_FEEDBACK_WHATSAPP;
 
 // The guide reads this browser's saved answers, so it only renders in the browser.
 export function TesterGuide() {
@@ -59,6 +62,7 @@ function Guide() {
     version: VERSION,
   });
   const reviewed = ALL_SCENARIOS.filter((scenario) => answers.results[scenario.id]).length;
+  const whatsApp = whatsAppLink(FEEDBACK_WHATSAPP, report);
 
   async function copyReport() {
     const copied = await copyText(report);
@@ -100,7 +104,11 @@ function Guide() {
             aquí: tus marcas se guardan.
           </li>
           <li>Marca si funcionó o no, y cuenta qué pasó.</li>
-          <li>Al final toca “Compartir reporte” y envíaselo a quien te invitó.</li>
+          <li>
+            {whatsApp
+              ? "Al final toca “Enviar por WhatsApp”: el reporte ya va escrito, solo le das enviar."
+              : "Al final toca “Compartir reporte” y envíaselo a quien te invitó."}
+          </li>
         </ol>
         <p className="opacity-80">
           🔒 El reporte solo incluye tus respuestas y tu tipo de dispositivo, nunca tus datos financieros.
@@ -163,14 +171,38 @@ function Guide() {
 
       <section className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-semibold">Enviar tu reporte</h2>
-        <div className="flex gap-2">
-          <Button onClick={shareReport} className="flex-1">
-            Compartir reporte
-          </Button>
-          <Button variant="secondary" onClick={copyReport}>
-            Copiar
-          </Button>
-        </div>
+        {whatsApp ? (
+          <>
+            <a
+              href={whatsApp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              Enviar por WhatsApp
+            </a>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Se abre WhatsApp con el reporte ya escrito. Revísalo y toca enviar.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={shareReport} className="flex-1">
+                Compartir de otra forma
+              </Button>
+              <Button variant="secondary" onClick={copyReport}>
+                Copiar
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex gap-2">
+            <Button onClick={shareReport} className="flex-1">
+              Compartir reporte
+            </Button>
+            <Button variant="secondary" onClick={copyReport}>
+              Copiar
+            </Button>
+          </div>
+        )}
         {shareMessage && (
           <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
             {shareMessage}

@@ -96,7 +96,7 @@ Chrome on Android only offers "Install app" (and fires `beforeinstallprompt`, wh
 
 ## Tester guide
 
-`/probar` walks testers through 14 checks and builds a text report they share by WhatsApp or email. It includes their answers, device and app version (the Vercel commit), never their financial data. Answers are kept in `localStorage` only as a convenience while testing.
+`/probar` walks testers through 14 checks and builds a text report. When `NEXT_PUBLIC_FEEDBACK_WHATSAPP` is set, "Enviar por WhatsApp" opens a `wa.me` link with the report already written; otherwise testers share or copy it. It includes their answers, device and app version (the Vercel commit), never their financial data. Answers are kept in `localStorage` only as a convenience while testing.
 
 `scenarios.test.ts` replays the guide with the real domain functions, so the numbers the guide promises stay true when rules change.
 
