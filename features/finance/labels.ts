@@ -24,6 +24,7 @@ export const TRANSACTION_ERROR_MESSAGES: Record<TransactionError, string> = {
   missing_destination_account: "Elige la cuenta a donde entra el dinero.",
   same_source_and_destination: "La cuenta de origen y la de destino deben ser distintas.",
   invalid_date: "Elige una fecha válida.",
+  invalid_destination_amount: "Escribe cuánto llegó a la cuenta de destino, en su moneda.",
 };
 
 export const SUGGESTED_CATEGORIES = [

@@ -50,6 +50,12 @@ export interface Transaction extends BaseEntity {
   fromAccountId?: string;
   /** Account the money enters. Set for income and transfers. */
   toAccountId?: string;
+  /**
+   * Only for transfers between accounts in different currencies: what arrived, in the
+   * destination's currency (e.g. 100 USD out, 395,000 COP in). Both amounts are facts;
+   * the exchange rate is calculated from them, never stored.
+   */
+  toAmount?: Money;
   category?: string;
   description?: string;
 }

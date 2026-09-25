@@ -54,3 +54,28 @@ describe("buildReportTables", () => {
     ]);
   });
 });
+
+describe("buildReportTables for one currency", () => {
+  const pesos = makeAccount({ id: "pesos", name: "Bancolombia", currency: "COP" });
+  const dollars = makeAccount({ id: "dollars", name: "Chase", currency: "USD", openingBalance: 50_000 });
+  const exchange = makeTransaction({
+    kind: "transfer",
+    date: "2026-09-10",
+    fromAccountId: "dollars",
+    toAccountId: "pesos",
+    amount: 10_000,
+    toAmount: 395_000,
+  });
+  const summaryIn = (currency: "COP" | "USD") =>
+    buildReportTables(getMonthlySummary([pesos, dollars], [exchange], "2026-09", currency), [pesos, dollars]);
+
+  it("names the currency in the title and the file", () => {
+    expect(summaryIn("USD").title).toBe("Reporte financiero · Septiembre de 2026 · USD");
+    expect(summaryIn("USD").fileName).toBe("lifeos-reporte-2026-09-USD");
+  });
+
+  it("shows each movement in the report's currency: what left, or what arrived", () => {
+    expect(summaryIn("USD").movements[0].amount).toBe(10_000);
+    expect(summaryIn("COP").movements[0].amount).toBe(395_000);
+  });
+});

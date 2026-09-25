@@ -1,4 +1,5 @@
 import { isDebtAccountType } from "@/domain/finance/accounts";
+import { amountForAccount } from "@/domain/finance/balance";
 import type { MonthlySummary } from "@/domain/finance/reports";
 import type { Account, LocalDate, Money, Transaction } from "@/domain/finance/types";
 import { TRANSACTION_KIND_LABELS } from "@/features/finance/labels";
@@ -34,10 +35,16 @@ export interface MonthlyReportTables {
 export function buildReportTables(summary: MonthlySummary, accounts: Account[]): MonthlyReportTables {
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountName = (id?: string) => (id ? (accountsById.get(id)?.name ?? "") : "");
+  // In a one-currency report, a movement that arrived from another currency shows what arrived.
+  const amountInReport = (transaction: Transaction) => {
+    const from = accountsById.get(transaction.fromAccountId ?? "");
+    const arrivedHere = summary.currency !== undefined && from?.currency !== summary.currency;
+    return arrivedHere ? amountForAccount(transaction, transaction.toAccountId) : transaction.amount;
+  };
 
   return {
-    title: `Reporte financiero · ${formatMonth(summary.month)}`,
-    fileName: `lifeos-reporte-${summary.month}`,
+    title: `Reporte financiero · ${formatMonth(summary.month)}${summary.currency ? ` · ${summary.currency}` : ""}`,
+    fileName: `lifeos-reporte-${summary.month}${summary.currency ? `-${summary.currency}` : ""}`,
     summary: [
       { label: "Ingresos", amount: summary.income },
       { label: "Gastos", amount: summary.expenses },
@@ -58,7 +65,7 @@ export function buildReportTables(summary: MonthlySummary, accounts: Account[]):
       category: transaction.category ?? "",
       from: accountName(transaction.fromAccountId),
       to: accountName(transaction.toAccountId),
-      amount: transaction.amount,
+      amount: amountInReport(transaction),
     })),
   };
 }

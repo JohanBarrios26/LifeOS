@@ -1,9 +1,9 @@
-import type { LocalDate, Transaction } from "./types";
+import type { Account, LocalDate, Transaction } from "./types";
 
 /** The fields a person fills in when recording a transaction. */
 export type TransactionInput = Pick<
   Transaction,
-  "kind" | "date" | "amount" | "fromAccountId" | "toAccountId" | "category" | "description"
+  "kind" | "date" | "amount" | "fromAccountId" | "toAccountId" | "toAmount" | "category" | "description"
 >;
 
 /**
@@ -16,10 +16,14 @@ export type TransactionError =
   | "missing_source_account"
   | "missing_destination_account"
   | "same_source_and_destination"
-  | "invalid_date";
+  | "invalid_date"
+  | "invalid_destination_amount";
 
-/** Returns every problem found. An empty list means the transaction can be saved. */
-export function validateTransaction(input: TransactionInput): TransactionError[] {
+/**
+ * Returns every problem found. An empty list means the transaction can be saved.
+ * `accounts` lets it check rules that depend on them, like currencies.
+ */
+export function validateTransaction(input: TransactionInput, accounts: Account[] = []): TransactionError[] {
   const errors: TransactionError[] = [];
 
   // Regla 1: el monto debe ser mayor que cero.
@@ -67,6 +71,15 @@ export function validateTransaction(input: TransactionInput): TransactionError[]
   // Rechaza fechas como "15/09/2026" (otro formato) o "2026-02-30" (febrero no tiene 30 días).
   if (!isValidLocalDate(input.date)) {
     errors.push("invalid_date");
+  }
+
+  // Regla 7: entre cuentas de monedas distintas hay que decir cuánto llegó, en la moneda de destino.
+  // Los dos montos son hechos (salieron US$ 100 y llegaron $ 395.000); la tasa se calcula con ellos.
+  const from = accounts.find((account) => account.id === input.fromAccountId);
+  const to = accounts.find((account) => account.id === input.toAccountId);
+  const betweenCurrencies = input.kind === "transfer" && from && to && from.currency !== to.currency;
+  if (betweenCurrencies && !(Number.isInteger(input.toAmount) && (input.toAmount ?? 0) > 0)) {
+    errors.push("invalid_destination_amount");
   }
 
   return errors;

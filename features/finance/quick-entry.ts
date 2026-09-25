@@ -1,5 +1,5 @@
 import { isDebtAccountType } from "@/domain/finance/accounts";
-import type { Account, AccountType, CurrencyCode, LocalDate, Money, Transaction } from "@/domain/finance/types";
+import type { Account, AccountType, CurrencyCode, LocalDate, Transaction } from "@/domain/finance/types";
 import type { TransactionInput } from "@/domain/finance/validation";
 import { shiftDate } from "@/lib/dates";
 import { currencyDigits } from "@/lib/format";
@@ -14,6 +14,7 @@ export interface QuickEntryContext {
   accounts: Account[];
   /** Past transactions, used to guess the usual account when the text does not name one. */
   transactions: Transaction[];
+  /** The person's main currency, used when neither an account nor a currency is recognized. */
   currency: CurrencyCode;
   today: LocalDate;
 }
@@ -82,6 +83,24 @@ const TYPE_WORDS: Record<string, AccountType> = {
   tc: "credit",
   prestamo: "loan",
 };
+/** Words that name a currency: "45 reais", "12 dólares". */
+const CURRENCY_WORDS: Record<string, CurrencyCode> = {
+  peso: "COP",
+  pesos: "COP",
+  cop: "COP",
+  dolar: "USD",
+  dolares: "USD",
+  usd: "USD",
+  reais: "BRL",
+  reales: "BRL",
+  brl: "BRL",
+  euro: "EUR",
+  euros: "EUR",
+  eur: "EUR",
+};
+/** Symbols written before the amount: "US$12", "R$45", "€30". A plain "$" says nothing about the currency. */
+const CURRENCY_SYMBOLS: Record<string, CurrencyCode | undefined> = { "us$": "USD", "r$": "BRL", "€": "EUR", $: undefined };
+
 /** Words in account names that say nothing about which account it is ("Cuenta débito"). */
 const GENERIC_NAME_WORDS = new Set(["cuenta", "tarjeta", "de", "del", "la", "el", "mi", ...Object.keys(TYPE_WORDS)]);
 /** Connecting words trimmed from the start and end of the description. */
@@ -94,11 +113,24 @@ export function parseQuickEntry(text: string, context: QuickEntryContext): Quick
   const has = (vocabulary: Set<string> | Record<string, unknown>) =>
     keys.some((key) => (vocabulary instanceof Set ? vocabulary.has(key) : key in vocabulary));
 
-  const amount = findAmount(keys, used, context.currency);
+  const amount = findAmount(keys, used);
   const date = findDate(keys, used, context.today);
-  const mentioned = findAccounts(keys, used, context.accounts);
+  // The currency the person wrote, if any: "US$12" or "45 reais".
+  const currencyWordIndex = keys.findIndex((key) => key in CURRENCY_WORDS);
+  if (currencyWordIndex !== -1) {
+    used[currencyWordIndex] = true;
+  }
+  const writtenCurrency = amount?.currency ?? CURRENCY_WORDS[keys[currencyWordIndex]];
+  const mentioned = findAccounts(keys, used, context.accounts, writtenCurrency);
 
-  const moneyAccounts = context.accounts.filter((account) => !isDebtAccountType(account.type));
+  // When a currency was written, suggest only accounts in that currency.
+  const inWrittenCurrency = (accounts: Account[]) =>
+    writtenCurrency ? accounts.filter((account) => account.currency === writtenCurrency) : accounts;
+  // A type word that did not pick one account ("con tarjeta" with two cards) still rules out other types.
+  const writtenTypes = new Set(keys.filter((key) => key in TYPE_WORDS).map((key) => TYPE_WORDS[key]));
+  const ofWrittenType = (accounts: Account[]) =>
+    writtenTypes.size > 0 ? accounts.filter((account) => writtenTypes.has(account.type)) : accounts;
+  const moneyAccounts = inWrittenCurrency(context.accounts.filter((account) => !isDebtAccountType(account.type)));
   const mentionedMoney = mentioned.filter((account) => !isDebtAccountType(account.type));
   const mentionedDebt = mentioned.find((account) => isDebtAccountType(account.type));
   const mentionedSavings = mentioned.find((account) => account.type === "savings");
@@ -135,14 +167,26 @@ export function parseQuickEntry(text: string, context: QuickEntryContext): Quick
   } else {
     input = {
       kind: "expense",
-      fromAccountId: mentioned[0]?.id ?? usual(context.accounts, (t) => t.fromAccountId, (t) => t.kind === "expense"),
+      fromAccountId:
+        mentioned[0]?.id ??
+        usual(ofWrittenType(inWrittenCurrency(context.accounts)), (t) => t.fromAccountId, (t) => t.kind === "expense"),
       category: keys.map((key) => EXPENSE_CATEGORIES[key]).find(Boolean),
     };
   }
 
+  // The amount is in the currency of the account it moves: dollars have cents, pesos do not.
+  const amountAccountId = input.kind === "income" ? input.toAccountId : input.fromAccountId;
+  const amountCurrency =
+    context.accounts.find((account) => account.id === amountAccountId)?.currency ?? writtenCurrency ?? context.currency;
+
   const mentionedIds = new Set(mentioned.map((account) => account.id));
   return {
-    input: { ...input, amount, date, description: describe(words, used) },
+    input: {
+      ...input,
+      amount: amount ? Math.round(amount.value * 10 ** currencyDigits(amountCurrency)) : Number.NaN,
+      date,
+      description: describe(words, used),
+    },
     guessed: {
       source: input.fromAccountId !== undefined && !mentionedIds.has(input.fromAccountId),
       destination: input.toAccountId !== undefined && !mentionedIds.has(input.toAccountId),
@@ -150,9 +194,9 @@ export function parseQuickEntry(text: string, context: QuickEntryContext): Quick
   };
 }
 
-/** "Almuerzo," → "Almuerzo"; keeps a leading "$" so "$25.000" is still read as money. */
+/** "Almuerzo," → "Almuerzo"; keeps a leading "$" or "€" so "$25.000" is still read as money. */
 function trimPunctuation(word: string): string {
-  return word.replace(/^[^\p{L}\p{N}$]+|[^\p{L}\p{N}]+$/gu, "");
+  return word.replace(/^[^\p{L}\p{N}$€]+|[^\p{L}\p{N}]+$/gu, "");
 }
 
 /** Lowercase without accents, so "Débito" and "debito" match. */
@@ -161,15 +205,16 @@ function normalize(text: string): string {
 }
 
 /**
- * Reads the amount: "25000", "25.000", "$25.000", "25 mil", "25k", "1,5 millones", "30 lucas", "2 palos".
+ * Reads the amount in whole units (12.5 means 12 dollars and 50 cents): "25000", "25.000", "$25.000",
+ * "US$12,50", "R$45", "25 mil", "25k", "1,5 millones", "30 lucas", "2 palos".
  * With several numbers ("2 empanadas 5 mil"), the one written as money wins; otherwise the largest.
- * An unreadable amount becomes NaN, which validateTransaction rejects.
+ * Returns null when there is none; the caller turns that into NaN, which validateTransaction rejects.
  */
-function findAmount(keys: string[], used: boolean[], currency: CurrencyCode): Money {
-  const candidates: { indexes: number[]; value: number; looksLikeMoney: boolean }[] = [];
+function findAmount(keys: string[], used: boolean[]): { value: number; currency?: CurrencyCode } | null {
+  const candidates: { indexes: number[]; value: number; looksLikeMoney: boolean; currency?: CurrencyCode }[] = [];
 
   keys.forEach((key, index) => {
-    const match = /^(\$?)(\d[\d.,]*?)(k|mil|lucas?|m|millon|millones|palos?)?$/.exec(key);
+    const match = /^(us\$|r\$|€|\$)?(\d[\d.,]*?)(k|mil|lucas?|m|millon|millones|palos?)?$/.exec(key);
     const value = match ? parseNumber(match[2]) : null;
     if (!match || value === null) {
       return;
@@ -181,7 +226,8 @@ function findAmount(keys: string[], used: boolean[], currency: CurrencyCode): Mo
     candidates.push({
       indexes: nextIsSuffix ? [index, index + 1] : [index],
       value: value * multiplier,
-      looksLikeMoney: match[1] === "$" || multiplier > 1,
+      looksLikeMoney: match[1] !== undefined || multiplier > 1,
+      currency: match[1] ? CURRENCY_SYMBOLS[match[1]] : undefined,
     });
   });
 
@@ -189,10 +235,10 @@ function findAmount(keys: string[], used: boolean[], currency: CurrencyCode): Mo
     (a, b) => Number(b.looksLikeMoney) - Number(a.looksLikeMoney) || b.value - a.value,
   );
   if (!best) {
-    return Number.NaN;
+    return null;
   }
   best.indexes.forEach((index) => (used[index] = true));
-  return Math.round(best.value * 10 ** currencyDigits(currency));
+  return { value: best.value, currency: best.currency };
 }
 
 /** "1.200.000" and "1,200" use thousands separators; "1,5" and "2.5" use a decimal point. */
@@ -215,7 +261,12 @@ function findDate(keys: string[], used: boolean[], today: LocalDate): LocalDate 
   return shiftDate(today, DATE_WORDS[keys[index]]);
 }
 
-function findAccounts(keys: string[], used: boolean[], accounts: Account[]): Account[] {
+function findAccounts(
+  keys: string[],
+  used: boolean[],
+  accounts: Account[],
+  writtenCurrency: CurrencyCode | undefined,
+): Account[] {
   const found: Account[] = [];
   const add = (account: Account, index: number) => {
     used[index] = true;
@@ -231,9 +282,13 @@ function findAccounts(keys: string[], used: boolean[], accounts: Account[]): Acc
       add(matches[0], index);
     }
   });
-  // Then type words: "efectivo" → the only cash account. With two cards, "tarjeta" chooses none.
+  // Then type words: "efectivo" → the only cash account. With two cards, "tarjeta" chooses none,
+  // unless only one of them is in the currency that was written ("20 dólares con la tarjeta").
   keys.forEach((key, index) => {
-    const ofType = accounts.filter((account) => account.type === TYPE_WORDS[key]);
+    let ofType = accounts.filter((account) => account.type === TYPE_WORDS[key]);
+    if (ofType.length > 1 && writtenCurrency) {
+      ofType = ofType.filter((account) => account.currency === writtenCurrency);
+    }
     if (!used[index] && ofType.length === 1) {
       add(ofType[0], index);
     }
@@ -251,7 +306,8 @@ function nameKeywords(account: Account): string[] {
 /**
  * The account to suggest when the text names none, in order of preference:
  * the one used most in similar transactions, the one used most in any transaction,
- * or the only candidate. Otherwise none: the person chooses.
+ * the only candidate, or the only candidate that holds money (not a card or loan).
+ * Otherwise none: the person chooses.
  */
 function usualAccount(
   transactions: Transaction[],
@@ -272,10 +328,12 @@ function usualAccount(
     return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
   };
 
+  const moneyCandidates = candidates.filter((account) => !isDebtAccountType(account.type));
   return (
     mostUsed((t) => (similar(t) ? [pick(t)] : [])) ??
     mostUsed((t) => [t.fromAccountId, t.toAccountId]) ??
-    (candidates.length === 1 ? candidates[0].id : undefined)
+    (candidates.length === 1 ? candidates[0].id : undefined) ??
+    (moneyCandidates.length === 1 ? moneyCandidates[0].id : undefined)
   );
 }
 

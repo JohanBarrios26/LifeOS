@@ -111,6 +111,8 @@ Settings that must not live in the code go in `.env.local` (ignored by Git) and,
 - [x] Quick entry in plain Spanish ("almuerzo 25 mil con la nu").
 - [x] Installable app (PWA) with home-screen shortcuts.
 - [x] Welcome step where each person chooses how to be called.
+- [x] Several currencies (COP, USD, BRL, EUR): accounts in any currency, totals and reports per currency, currency exchanges with both amounts.
+- [ ] Approximate total in the main currency using daily exchange rates.
 - [x] Publish online (HTTPS) to install it on a phone: [life-os-green-ten.vercel.app](https://life-os-green-ten.vercel.app).
 - [x] In-app guide for testers at `/probar`, with a shareable report.
 - [x] Work offline and install as a real app on Android (service worker).

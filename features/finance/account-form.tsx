@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { Button, ErrorList, Field, formCardClassName, inputClassName } from "@/components/form";
 import { createEntityFields, markUpdated } from "@/domain/entity";
 import { type AccountRemoval, isDebtAccountType } from "@/domain/finance/accounts";
+import { CURRENCIES, currencyDigits } from "@/domain/finance/currencies";
 import { ACCOUNT_TYPES, type Account, type AccountType, type CurrencyCode } from "@/domain/finance/types";
 import { toLocalDate } from "@/lib/dates";
 import { formatAmountInput, formatShortDate, parseAmount } from "@/lib/format";
@@ -11,6 +12,7 @@ import { LOCAL_USER_ID } from "@/lib/preferences";
 import { ACCOUNT_TYPE_LABELS } from "./labels";
 
 interface AccountFormProps {
+  /** Suggested currency for a new account: the person's main currency. */
   currency: CurrencyCode;
   /** The account being edited. Without it, the form creates a new one. */
   account?: Account;
@@ -32,9 +34,11 @@ export function AccountForm({
   onReactivate,
 }: AccountFormProps) {
   const [type, setType] = useState<AccountType>(account?.type ?? "debit");
+  const [accountCurrency, setAccountCurrency] = useState<CurrencyCode>(account?.currency ?? currency);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const isDebt = isDebtAccountType(type);
+  const hasCents = currencyDigits(accountCurrency) > 0;
 
   // An existing account keeps its group: money cannot turn into debt, because the
   // sign of its whole history would change meaning.
@@ -47,7 +51,7 @@ export function AccountForm({
     const form = event.currentTarget;
     const formData = new FormData(form);
     const name = String(formData.get("name") ?? "").trim();
-    const amount = parseAmount(String(formData.get("openingBalance") ?? ""), currency);
+    const amount = parseAmount(String(formData.get("openingBalance") ?? ""), accountCurrency);
 
     const messages: string[] = [];
     if (!name) {
@@ -72,12 +76,13 @@ export function AccountForm({
         ...createEntityFields(LOCAL_USER_ID),
         name,
         type,
-        currency,
+        currency: accountCurrency,
         openingBalance,
         openingDate: toLocalDate(),
       });
       form.reset();
       setType("debit");
+      setAccountCurrency(currency);
     }
     setSaving(false);
   }
@@ -131,13 +136,39 @@ export function AccountForm({
         />
       </Field>
 
+      <Field
+        label="Moneda"
+        htmlFor="account-currency"
+        hint={
+          account
+            ? "La moneda no se puede cambiar: cambiaría el valor de todo su historial."
+            : "Cada cuenta lleva sus movimientos en su propia moneda."
+        }
+      >
+        <select
+          id="account-currency"
+          value={accountCurrency}
+          onChange={(event) => setAccountCurrency(event.target.value)}
+          disabled={account !== undefined}
+          className={`${inputClassName} disabled:opacity-60`}
+        >
+          {CURRENCIES.map((option) => (
+            <option key={option.code} value={option.code}>
+              {option.name} ({option.code})
+            </option>
+          ))}
+        </select>
+      </Field>
+
       <Field label={balanceLabel} htmlFor="account-opening-balance" hint={balanceHint}>
         <input
           id="account-opening-balance"
           name="openingBalance"
-          inputMode="numeric"
-          placeholder="Ej: 1.200.000"
-          defaultValue={account ? formatAmountInput(Math.abs(account.openingBalance), currency) : undefined}
+          inputMode={hasCents ? "decimal" : "numeric"}
+          placeholder={hasCents ? "Ej: 1.500,00" : "Ej: 1.200.000"}
+          defaultValue={
+            account ? formatAmountInput(Math.abs(account.openingBalance), account.currency) : undefined
+          }
           className={inputClassName}
           autoComplete="off"
         />

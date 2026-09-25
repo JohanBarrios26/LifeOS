@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { formatAmountInput, formatMoney, formatMonth, formatShortDate, parseAmount, toMajorUnits } from "./format";
+import {
+  currencySymbol,
+  formatAmountInput,
+  formatMoney,
+  formatMonth,
+  formatShortDate,
+  parseAmount,
+  toMajorUnits,
+} from "./format";
+
+describe("currencySymbol", () => {
+  it("gives the symbol shown next to amounts", () => {
+    expect(currencySymbol("COP")).toBe("$");
+    expect(currencySymbol("USD")).toBe("US$");
+    expect(currencySymbol("BRL")).toBe("R$");
+    expect(currencySymbol("EUR")).toBe("€");
+  });
+});
 
 // Intl uses non-breaking spaces; normalize them so expectations stay readable.
 const format = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\s/g, " ");
@@ -15,6 +32,11 @@ describe("formatMoney", () => {
 
   it("converts cents to dollars for USD", () => {
     expect(format(1250, "USD")).toBe("US$ 12,50");
+  });
+
+  it("writes reais and euros with the symbols people recognize", () => {
+    expect(format(4590, "BRL")).toBe("R$ 45,90");
+    expect(format(-123_450, "EUR")).toBe("-€ 1.234,50");
   });
 });
 

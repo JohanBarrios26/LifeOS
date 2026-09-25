@@ -10,7 +10,13 @@ import type { Profile } from "./profile";
  * Version of the backup file format. Increase it when the stored records change shape,
  * and teach parseBackup to upgrade files written with older versions.
  */
-export const BACKUP_SCHEMA_VERSION = 1;
+export const BACKUP_SCHEMA_VERSION = 2;
+
+// Version history:
+// 1 (Sep 2026) — accounts, transactions, and later an optional profile.
+// 2 (Sep 2026) — several currencies: transactions may have `toAmount`, profiles `mainCurrency`.
+//   Version 1 files are valid version 2 files. An app that only knows version 1 must reject
+//   version 2 files, because it would ignore `toAmount` and get balances wrong.
 
 export interface LifeosBackup {
   app: "lifeos";
@@ -121,7 +127,12 @@ function isAccount(value: unknown): value is Account {
 }
 
 function isProfile(value: unknown): value is Profile {
-  return isObject(value) && hasEntityFields(value) && typeof value.displayName === "string";
+  return (
+    isObject(value) &&
+    hasEntityFields(value) &&
+    typeof value.displayName === "string" &&
+    isOptionalString(value.mainCurrency)
+  );
 }
 
 function isTransaction(value: unknown): value is Transaction {
@@ -133,6 +144,7 @@ function isTransaction(value: unknown): value is Transaction {
     Number.isInteger(value.amount) &&
     isOptionalString(value.fromAccountId) &&
     isOptionalString(value.toAccountId) &&
+    (value.toAmount === undefined || Number.isInteger(value.toAmount)) &&
     isOptionalString(value.category) &&
     isOptionalString(value.description)
   );

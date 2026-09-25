@@ -1,6 +1,6 @@
 import type { CurrencyCode, Money } from "@/domain/finance/types";
 import { downloadBlob } from "@/lib/download";
-import { currencyDigits, toMajorUnits } from "@/lib/format";
+import { currencyDigits, currencySymbol, toMajorUnits } from "@/lib/format";
 import type { MonthlyReportTables } from "./report-tables";
 
 /** Downloads the report as an .xlsx file with three sheets: summary, categories and movements. */
@@ -8,7 +8,9 @@ export async function exportReportToExcel(tables: MonthlyReportTables, currency:
   // Loaded only when the button is pressed, so opening the app stays fast.
   const { default: writeExcelFile } = await import("write-excel-file/browser");
 
-  const moneyFormat = currencyDigits(currency) === 0 ? '"$"#,##0' : '"$"#,##0.00';
+  // Excel format codes: "US$" #,##0.00 → US$ 1.234,50 (Excel applies the local separators).
+  const digits = currencyDigits(currency);
+  const moneyFormat = `"${currencySymbol(currency)} "#,##0${digits > 0 ? `.${"0".repeat(digits)}` : ""}`;
   // Real numbers (not text), so the person can add them up or chart them in Excel.
   const money = (amount: Money) => ({ value: toMajorUnits(amount, currency), type: Number, format: moneyFormat });
   const header = (text: string) => ({ value: text, fontWeight: "bold" as const, backgroundColor: "#E4E4E7" });

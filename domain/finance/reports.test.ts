@@ -79,3 +79,63 @@ describe("getMonthlySummary", () => {
     expect(empty).toMatchObject({ income: 0, expenses: 0, net: 0, expensesByCategory: [], transactions: [] });
   });
 });
+
+describe("getMonthlySummary with several currencies", () => {
+  const pesos = makeAccount({ id: "pesos", currency: "COP", openingBalance: 1_000_000, openingDate: opened });
+  const dollars = makeAccount({ id: "dollars", currency: "USD", openingBalance: 100_000, openingDate: opened });
+  const dollarCard = makeAccount({
+    id: "dollar-card",
+    currency: "USD",
+    type: "credit",
+    openingBalance: -30_000,
+    openingDate: opened,
+  });
+  const all = [pesos, dollars, dollarCard];
+
+  const movements = [
+    makeTransaction({ kind: "income", date: "2026-09-01", amount: 2_000_000, toAccountId: "pesos" }),
+    makeTransaction({ kind: "expense", date: "2026-09-02", amount: 50_000, fromAccountId: "pesos", category: "Comida" }),
+    makeTransaction({ kind: "expense", date: "2026-09-03", amount: 2_500, fromAccountId: "dollars", category: "Comida" }),
+    // US$ 100 changed into $ 395.000.
+    makeTransaction({
+      kind: "transfer",
+      date: "2026-09-04",
+      amount: 10_000,
+      toAmount: 395_000,
+      fromAccountId: "dollars",
+      toAccountId: "pesos",
+    }),
+    // Paying the dollar card from pesos: $ 80.000 left, US$ 20 of debt was paid.
+    makeTransaction({
+      kind: "transfer",
+      date: "2026-09-05",
+      amount: 80_000,
+      toAmount: 2_000,
+      fromAccountId: "pesos",
+      toAccountId: "dollar-card",
+    }),
+  ];
+
+  it("reports only what happened in each currency", () => {
+    const inPesos = getMonthlySummary(all, movements, "2026-09", "COP");
+    const inDollars = getMonthlySummary(all, movements, "2026-09", "USD");
+
+    expect(inPesos).toMatchObject({ income: 2_000_000, expenses: 50_000, debtPayments: 80_000 });
+    expect(inDollars).toMatchObject({ income: 0, expenses: 2_500, debtPayments: 0 });
+  });
+
+  it("closes the month with each currency's own balances", () => {
+    const inPesos = getMonthlySummary(all, movements, "2026-09", "COP");
+    const inDollars = getMonthlySummary(all, movements, "2026-09", "USD");
+
+    // Pesos: 1.000.000 + 2.000.000 − 50.000 + 395.000 − 80.000
+    expect(inPesos).toMatchObject({ availableAtEnd: 3_265_000, debtAtEnd: 0 });
+    // Dollars: 100.000 − 2.500 − 10.000 cents; card: 30.000 − 2.000 cents
+    expect(inDollars).toMatchObject({ availableAtEnd: 87_500, debtAtEnd: 28_000 });
+  });
+
+  it("lists every movement that touched an account in that currency", () => {
+    expect(getMonthlySummary(all, movements, "2026-09", "USD").transactions).toHaveLength(3);
+    expect(getMonthlySummary(all, movements, "2026-09", "COP").transactions).toHaveLength(4);
+  });
+});

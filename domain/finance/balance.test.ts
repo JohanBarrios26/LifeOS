@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAccountBalance, getAvailableBalance, getTotalDebt } from "./balance";
+import { amountForAccount, getAccountBalance, getAvailableBalance, getTotalDebt, totalsByCurrency } from "./balance";
 import { makeAccount, makeTransaction } from "./test-factories";
 
 describe("getAccountBalance", () => {
@@ -181,5 +181,46 @@ describe("getAvailableBalance", () => {
 
   it("returns zero when there are no accounts", () => {
     expect(getAvailableBalance([], [])).toBe(0);
+  });
+});
+
+describe("several currencies", () => {
+  const pesos = makeAccount({ id: "pesos", currency: "COP", openingBalance: 1_000_000 });
+  const dollars = makeAccount({ id: "dollars", currency: "USD", openingBalance: 50_000 }); // US$ 500,00
+  const reais = makeAccount({ id: "reais", currency: "BRL", type: "savings", openingBalance: 120_000 }); // R$ 1.200,00
+  const dollarCard = makeAccount({ id: "dollar-card", currency: "USD", type: "credit", openingBalance: -20_000 });
+
+  // Changing US$ 100,00 into $ 395.000 pesos.
+  const exchange = makeTransaction({
+    kind: "transfer",
+    fromAccountId: "dollars",
+    toAccountId: "pesos",
+    amount: 10_000,
+    toAmount: 395_000,
+  });
+
+  it("takes out what left and adds what arrived, each in its own currency", () => {
+    expect(getAccountBalance(dollars, [exchange])).toBe(40_000);
+    expect(getAccountBalance(pesos, [exchange])).toBe(1_395_000);
+  });
+
+  it("keeps totals separate by currency", () => {
+    const accounts = [pesos, dollars, reais, dollarCard];
+
+    expect(totalsByCurrency(accounts, [exchange], getAvailableBalance)).toEqual([
+      { currency: "COP", amount: 1_395_000 },
+      { currency: "USD", amount: 40_000 },
+      { currency: "BRL", amount: 120_000 },
+    ]);
+    expect(totalsByCurrency(accounts, [exchange], getTotalDebt)).toEqual([
+      { currency: "COP", amount: 0 },
+      { currency: "USD", amount: 20_000 },
+      { currency: "BRL", amount: 0 },
+    ]);
+  });
+
+  it("tells the amount as each account sees it", () => {
+    expect(amountForAccount(exchange, "dollars")).toBe(10_000);
+    expect(amountForAccount(exchange, "pesos")).toBe(395_000);
   });
 });

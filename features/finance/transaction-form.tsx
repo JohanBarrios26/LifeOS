@@ -4,6 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { Button, ErrorList, Field, formCardClassName, inputClassName } from "@/components/form";
 import { createEntityFields, markUpdated } from "@/domain/entity";
 import { isDebtAccountType } from "@/domain/finance/accounts";
+import { currencyDigits, transactionCurrency } from "@/domain/finance/currencies";
 import type { Account, CurrencyCode, Money, Transaction } from "@/domain/finance/types";
 import { type TransactionInput, validateTransaction } from "@/domain/finance/validation";
 import { toLocalDate } from "@/lib/dates";
@@ -34,6 +35,7 @@ interface TransactionFormProps {
   accounts: Account[];
   /** Current balance of each account, to show what is available and what is owed. */
   balances: Map<string, Money>;
+  /** The person's main currency, used until an account is chosen. */
   currency: CurrencyCode;
   /** The transaction being edited. Without it, the form records a new one. */
   transaction?: Transaction;
@@ -58,10 +60,12 @@ export function TransactionForm({
   const [kind, setKind] = useState<FormKind>(
     prefill && prefill.kind !== "adjustment" ? prefill.kind : "expense",
   );
+  const [sourceId, setSourceId] = useState(prefill?.fromAccountId ?? "");
   const [destinationId, setDestinationId] = useState(prefill?.toAccountId ?? "");
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const amountInput = useRef<HTMLInputElement>(null);
+  const toAmountInput = useRef<HTMLInputElement>(null);
 
   // Archived accounts only appear when the edited transaction already uses them.
   const selectableAccounts = accounts.filter(
@@ -77,16 +81,24 @@ export function TransactionForm({
   const owedOn = (account: Account) => Math.max(0, -(balances.get(account.id) ?? 0));
   const describe = (account: Account) =>
     (isDebtAccountType(account.type)
-      ? `${account.name} · debes ${formatMoney(owedOn(account), currency)}`
-      : `${account.name} · ${formatMoney(balances.get(account.id) ?? 0, currency)}`) +
+      ? `${account.name} · debes ${formatMoney(owedOn(account), account.currency)}`
+      : `${account.name} · ${formatMoney(balances.get(account.id) ?? 0, account.currency)}`) +
     (account.archivedAt ? " (archivada)" : "");
 
+  const source = needsSource ? selectableAccounts.find((account) => account.id === sourceId) : undefined;
   const destination = destinationOptions.find((account) => account.id === destinationId);
   const payingDebt = kind === "transfer" && destination !== undefined && isDebtAccountType(destination.type);
+  // The amount is in the currency of the account it moves: dollars have cents, pesos do not.
+  const amountCurrency = (kind === "income" ? destination?.currency : source?.currency) ?? currency;
+  // Between currencies, both amounts are facts: what left and what arrived.
+  const crossCurrency =
+    kind === "transfer" && source !== undefined && destination !== undefined && source.currency !== destination.currency;
 
   function payEverything() {
-    if (destination && amountInput.current) {
-      amountInput.current.value = formatAmountInput(owedOn(destination), currency);
+    // Across currencies, what is owed is known in the debt's currency: it fills "how much arrived".
+    const input = crossCurrency ? toAmountInput.current : amountInput.current;
+    if (destination && input) {
+      input.value = formatAmountInput(owedOn(destination), destination.currency);
     }
   }
 
@@ -99,14 +111,18 @@ export function TransactionForm({
       kind,
       date: text("date") ?? "",
       // An unreadable amount becomes NaN, which the "whole number" rule rejects.
-      amount: parseAmount(text("amount") ?? "", currency) ?? Number.NaN,
+      amount: parseAmount(text("amount") ?? "", amountCurrency) ?? Number.NaN,
       fromAccountId: needsSource ? text("fromAccountId") : undefined,
       toAccountId: needsDestination ? text("toAccountId") : undefined,
+      toAmount:
+        crossCurrency && destination
+          ? (parseAmount(text("toAmount") ?? "", destination.currency) ?? Number.NaN)
+          : undefined,
       category: text("category") ?? (payingDebt ? DEBT_PAYMENT_CATEGORY : undefined),
       description: text("description"),
     };
 
-    const problems = validateTransaction(input);
+    const problems = validateTransaction(input, accounts);
     setErrors(problems.map((problem) => TRANSACTION_ERROR_MESSAGES[problem]));
     if (problems.length > 0) {
       return;
@@ -149,15 +165,17 @@ export function TransactionForm({
         {KIND_OPTIONS.find((option) => option.kind === kind)?.help}
       </p>
 
-      <Field label="Monto" htmlFor="transaction-amount">
+      <Field label={`Monto · ${amountCurrency}`} htmlFor="transaction-amount">
         <input
           ref={amountInput}
           id="transaction-amount"
           name="amount"
-          inputMode="numeric"
-          placeholder="Ej: 50.000"
+          inputMode={currencyDigits(amountCurrency) > 0 ? "decimal" : "numeric"}
+          placeholder={currencyDigits(amountCurrency) > 0 ? "Ej: 25,50" : "Ej: 50.000"}
           defaultValue={
-            prefill && Number.isInteger(prefill.amount) ? formatAmountInput(prefill.amount, currency) : undefined
+            prefill && Number.isInteger(prefill.amount)
+              ? formatAmountInput(prefill.amount, transactionCurrency(prefill, accounts, currency))
+              : undefined
           }
           className={inputClassName}
           autoComplete="off"
@@ -169,7 +187,9 @@ export function TransactionForm({
           <select
             id="transaction-from"
             name="fromAccountId"
-            defaultValue={prefill?.fromAccountId ?? ""}
+            // Only keep the choice if it is in this list; otherwise nothing is selected.
+            value={source ? sourceId : ""}
+            onChange={(event) => setSourceId(event.target.value)}
             className={inputClassName}
           >
             <AccountOptions accounts={selectableAccounts} describe={describe} />
@@ -192,7 +212,7 @@ export function TransactionForm({
           {payingDebt && owedOn(destination) > 0 && (
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="text-zinc-600 dark:text-zinc-400">
-                Debes {formatMoney(owedOn(destination), currency)}
+                Debes {formatMoney(owedOn(destination), destination.currency)}
               </span>
               <button
                 type="button"
@@ -203,6 +223,27 @@ export function TransactionForm({
               </button>
             </div>
           )}
+        </Field>
+      )}
+
+      {crossCurrency && destination && (
+        <Field
+          label={`¿Cuánto llegó a ${destination.name}? · ${destination.currency}`}
+          htmlFor="transaction-to-amount"
+          hint="Escribe lo que realmente llegó, con comisiones incluidas. LIFEOS calcula la tasa con los dos montos."
+        >
+          <input
+            ref={toAmountInput}
+            id="transaction-to-amount"
+            name="toAmount"
+            inputMode={currencyDigits(destination.currency) > 0 ? "decimal" : "numeric"}
+            placeholder={currencyDigits(destination.currency) > 0 ? "Ej: 25,50" : "Ej: 395.000"}
+            defaultValue={
+              prefill?.toAmount !== undefined ? formatAmountInput(prefill.toAmount, destination.currency) : undefined
+            }
+            className={inputClassName}
+            autoComplete="off"
+          />
         </Field>
       )}
 

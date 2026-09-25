@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/form";
 import { getMonthlySummary } from "@/domain/finance/reports";
-import type { Money } from "@/domain/finance/types";
+import type { CurrencyCode, Money } from "@/domain/finance/types";
 import { monthOf, shiftMonth } from "@/domain/month";
+import { mainCurrencyOf } from "@/domain/profile";
 import { useFinanceData } from "@/features/finance/use-finance-data";
 import { toLocalDate } from "@/lib/dates";
 import { formatMoney, formatMonth } from "@/lib/format";
-import { DEFAULT_CURRENCY } from "@/lib/preferences";
 import { exportReportToExcel } from "./export-excel";
 import { exportReportToPdf } from "./export-pdf";
 import { buildReportTables } from "./report-tables";
@@ -21,7 +21,7 @@ export function MonthlyReport() {
   const [month, setMonth] = useState(currentMonth);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exportFailed, setExportFailed] = useState(false);
-  const currency = DEFAULT_CURRENCY;
+  const [chosenCurrency, setChosenCurrency] = useState<CurrencyCode | null>(null);
 
   if (failed) {
     return (
@@ -35,7 +35,13 @@ export function MonthlyReport() {
   }
 
   const { accounts, transactions } = data;
-  const summary = getMonthlySummary(accounts, transactions, month);
+  const mainCurrency = mainCurrencyOf(data.profile);
+  // Every currency with an account, the main one first. Each has its own report: they are never added up.
+  const currencies = [...new Set(accounts.filter((account) => !account.deletedAt).map((account) => account.currency))]
+    .sort((a, b) => Number(b === mainCurrency) - Number(a === mainCurrency));
+  const currency =
+    chosenCurrency && currencies.includes(chosenCurrency) ? chosenCurrency : (currencies[0] ?? mainCurrency);
+  const summary = getMonthlySummary(accounts, transactions, month, currencies.length > 1 ? currency : undefined);
   const monthName = formatMonth(month);
   const money = (amount: Money) => formatMoney(amount, currency);
 
@@ -70,6 +76,32 @@ export function MonthlyReport() {
           ›
         </MonthButton>
       </div>
+
+      {currencies.length > 1 && (
+        <div
+          role="radiogroup"
+          aria-label="Moneda del reporte"
+          className="grid gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800"
+          style={{ gridTemplateColumns: `repeat(${currencies.length}, minmax(0, 1fr))` }}
+        >
+          {currencies.map((code) => (
+            <button
+              key={code}
+              type="button"
+              role="radio"
+              aria-checked={code === currency}
+              onClick={() => setChosenCurrency(code)}
+              className={`rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
+                code === currency
+                  ? "bg-white shadow-sm dark:bg-zinc-950"
+                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              }`}
+            >
+              {code}
+            </button>
+          ))}
+        </div>
+      )}
 
       {summary.transactions.length === 0 && (
         <p className="rounded-2xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">

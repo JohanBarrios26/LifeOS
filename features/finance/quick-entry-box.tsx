@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, inputClassName } from "@/components/form";
 import { createEntityFields } from "@/domain/entity";
 import { isDebtAccountType } from "@/domain/finance/accounts";
+import { transactionCurrency } from "@/domain/finance/currencies";
 import type { Account, CurrencyCode, Transaction } from "@/domain/finance/types";
 import { type TransactionInput, validateTransaction } from "@/domain/finance/validation";
 import { shiftDate, toLocalDate } from "@/lib/dates";
@@ -90,6 +91,8 @@ export function QuickEntryBox({ accounts, transactions, currency, onSave, onAdju
       ) : (
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Escribe como hablas: “mercado 180 mil débito”, “salario 2,5 millones”, “pago nu 300 mil”, “taxi 12k ayer”.
+          {new Set(accounts.map((account) => account.currency)).size > 1 &&
+            " En otras monedas: “almuerzo 45 reais”, “uber US$12”."}
         </p>
       )}
     </section>
@@ -114,7 +117,7 @@ function DraftPreview({
   onDiscard: () => void;
 }) {
   const { input, guessed } = draft;
-  const problems = validateTransaction(input);
+  const problems = validateTransaction(input, accounts);
   const accountName = (id?: string) => accounts.find((account) => account.id === id)?.name;
   const destination = accounts.find((account) => account.id === input.toAccountId);
   const isDebtPayment = input.kind === "transfer" && destination !== undefined && isDebtAccountType(destination.type);
@@ -124,7 +127,12 @@ function DraftPreview({
 
   const rows: [string, string | undefined, boolean?][] = [
     ["Tipo", isDebtPayment ? "Pago de deuda" : TRANSACTION_KIND_LABELS[input.kind]],
-    ["Monto", Number.isInteger(input.amount) ? formatMoney(input.amount, currency) : undefined],
+    [
+      "Monto",
+      Number.isInteger(input.amount)
+        ? formatMoney(input.amount, transactionCurrency(input, accounts, currency))
+        : undefined,
+    ],
     ["Sale de", input.kind === "income" ? "" : accountName(input.fromAccountId), guessed.source],
     ["Entra a", input.kind === "expense" ? "" : accountName(input.toAccountId), guessed.destination],
     ["Categoría", input.category ?? "Sin categoría"],
@@ -143,7 +151,7 @@ function DraftPreview({
               <dd className={value === undefined ? "text-red-700 dark:text-red-400" : "font-medium"}>
                 {value ?? "Falta"}
                 {wasGuessed && value && (
-                  <span className="font-normal text-zinc-500 dark:text-zinc-400"> · la que más usas</span>
+                  <span className="font-normal text-zinc-500 dark:text-zinc-400"> · sugerida</span>
                 )}
               </dd>
             </div>

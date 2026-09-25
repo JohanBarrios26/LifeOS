@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { makeAccount } from "./test-factories";
 import { type TransactionInput, validateTransaction } from "./validation";
 
 const validIncome: TransactionInput = {
@@ -78,5 +79,36 @@ describe("validateTransaction", () => {
     expect(errors).toEqual(
       expect.arrayContaining(["amount_not_positive", "missing_source_account", "invalid_date"]),
     );
+  });
+});
+
+describe("validateTransaction between currencies (regla 7)", () => {
+  const pesos = makeAccount({ id: "pesos", currency: "COP" });
+  const otherPesos = makeAccount({ id: "other-pesos", currency: "COP" });
+  const dollars = makeAccount({ id: "dollars", currency: "USD" });
+  const accounts = [pesos, otherPesos, dollars];
+  const exchange: TransactionInput = {
+    kind: "transfer",
+    date: "2026-09-25",
+    amount: 10_000,
+    fromAccountId: "dollars",
+    toAccountId: "pesos",
+    toAmount: 395_000,
+  };
+
+  it("accepts a change of currency with both amounts", () => {
+    expect(validateTransaction(exchange, accounts)).toEqual([]);
+  });
+
+  it("requires how much arrived when the currencies differ", () => {
+    expect(validateTransaction({ ...exchange, toAmount: undefined }, accounts)).toContain("invalid_destination_amount");
+    expect(validateTransaction({ ...exchange, toAmount: 0 }, accounts)).toContain("invalid_destination_amount");
+    expect(validateTransaction({ ...exchange, toAmount: 12.5 }, accounts)).toContain("invalid_destination_amount");
+  });
+
+  it("does not ask for it between accounts in the same currency", () => {
+    expect(
+      validateTransaction({ ...exchange, fromAccountId: "other-pesos", toAmount: undefined }, accounts),
+    ).toEqual([]);
   });
 });

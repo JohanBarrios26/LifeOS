@@ -143,3 +143,44 @@ describe("parseQuickEntry", () => {
     );
   });
 });
+
+describe("parseQuickEntry with several currencies", () => {
+  const pesos = makeAccount({ id: "pesos", name: "Bancolombia", type: "debit", currency: "COP" });
+  const dollars = makeAccount({ id: "dollars", name: "Chase", type: "debit", currency: "USD" });
+  const reais = makeAccount({ id: "reais", name: "Nubank Brasil", type: "savings", currency: "BRL" });
+  const pesoCard = makeAccount({ id: "peso-card", name: "Visa", type: "credit", currency: "COP" });
+  const dollarCard = makeAccount({ id: "dollar-card", name: "Amex", type: "credit", currency: "USD" });
+  const multi: Partial<QuickEntryContext> = {
+    accounts: [pesos, dollars, reais, pesoCard, dollarCard],
+    transactions: [makeTransaction({ kind: "expense", fromAccountId: "pesos" })],
+  };
+
+  it("uses an account in the currency that was written, with its cents", () => {
+    expect(parse("almuerzo 45 reais", multi).input).toMatchObject({ fromAccountId: "reais", amount: 4_500 });
+    expect(parse("uber 12,50 dólares", multi).input).toMatchObject({ fromAccountId: "dollars", amount: 1_250 });
+  });
+
+  it("reads currency symbols written before the amount", () => {
+    expect(parse("netflix US$15,99", multi).input).toMatchObject({ fromAccountId: "dollars", amount: 1_599 });
+    expect(parse("mercado R$120", multi).input).toMatchObject({ fromAccountId: "reais", amount: 12_000 });
+  });
+
+  it("picks the card in the written currency when there are several cards", () => {
+    expect(parse("cena 20 dólares con la tarjeta", multi).input).toMatchObject({
+      fromAccountId: "dollar-card",
+      amount: 2_000,
+      description: "Cena",
+    });
+  });
+
+  it("stays in the usual account and the main currency when no currency is written", () => {
+    expect(parse("mercado 180 mil", multi).input).toMatchObject({ fromAccountId: "pesos", amount: 180_000 });
+  });
+
+  it("asks how much arrived when a transfer crosses currencies", () => {
+    const { input } = parse("pago amex 400 mil desde bancolombia", multi);
+
+    expect(input).toMatchObject({ kind: "transfer", fromAccountId: "pesos", toAccountId: "dollar-card", amount: 400_000 });
+    expect(validateTransaction(input, multi.accounts)).toEqual(["invalid_destination_amount"]);
+  });
+});

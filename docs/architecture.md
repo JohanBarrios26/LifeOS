@@ -110,6 +110,17 @@ Chrome on Android only offers "Install app" (and fires `beforeinstallprompt`, wh
 
 The report downloads as Excel (`write-excel-file`) or PDF (`jspdf` + `jspdf-autotable`). Both files are built from the same tables (`buildReportTables`) so they always match, and the libraries load only when a download is requested. The PDF uses the built-in Helvetica font, which only covers WinAnsi characters: `pdfText` replaces or removes anything else.
 
+## Several currencies
+
+Each account has one currency, chosen when it is created and never changed afterwards (it would change the meaning of its whole history). A transaction's `amount` is in the currency of the account it moves: the destination for income, the source otherwise (`transactionCurrency`).
+
+- **Totals are never added across currencies.** `totalsByCurrency` runs `getAvailableBalance` or `getTotalDebt` once per currency; the dashboard shows one line per currency and the monthly report has one tab per currency (`getMonthlySummary(…, currency)`).
+- **Changing currency** is a `transfer` between accounts in different currencies with both amounts: `amount` (what left) and `toAmount` (what arrived, in the destination's currency). Both are facts; the exchange rate is derived from them and never stored. Rule 7 of `validateTransaction` requires `toAmount` in that case.
+- A debt payment across currencies (pesos paying a dollar card) counts as a debt payment in the currency of the money that left.
+- The profile's `mainCurrency` is the default for new accounts, quick entry and the first report tab.
+- Quick entry understands currency words ("reais", "dólares") and symbols before the amount ("US$12", "R$45").
+- Converting everything into one approximate total (with daily exchange rates) is intentionally left for later: it is an estimate, not a fact.
+
 ## Data conventions
 
 - **Money is an integer** in the currency's minor unit (cents for USD, pesos for COP). Floating-point math (`0.1 + 0.2 !== 0.3`) must never touch money.

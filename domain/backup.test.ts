@@ -54,6 +54,26 @@ describe("parseBackup", () => {
     expect(result.ok && result.backup.accounts).toEqual([debit, card]);
   });
 
+  it("still reads version 1 backups, made before several currencies existed", () => {
+    const result = parseBackup(backupText({ schemaVersion: 1 }));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("keeps amounts that crossed currencies and the main currency", () => {
+    const exchange = makeTransaction({ kind: "transfer", fromAccountId: "debit", toAccountId: "nu-card", amount: 10_000, toAmount: 395_000 });
+    const result = parseBackup(
+      backupText({ transactions: [exchange], profile: { ...profile, mainCurrency: "USD" } }),
+    );
+
+    expect(result.ok && result.backup.transactions[0].toAmount).toBe(395_000);
+    expect(result.ok && result.backup.profile?.mainCurrency).toBe("USD");
+    expect(parseBackup(backupText({ transactions: [{ ...exchange, toAmount: 1.5 }] }))).toEqual({
+      ok: false,
+      error: "invalid_records",
+    });
+  });
+
   it("rejects a damaged profile", () => {
     expect(parseBackup(backupText({ profile: { ...profile, displayName: 42 } }))).toEqual({
       ok: false,

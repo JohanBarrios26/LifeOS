@@ -1,35 +1,36 @@
+import { currencyDigits, currencyDisplay } from "@/domain/finance/currencies";
 import type { CurrencyCode, LocalDate, Money } from "@/domain/finance/types";
 
-/**
- * Digits after the decimal point for each currency's minor unit, as LIFEOS stores it.
- * COP is stored in whole pesos, even though ISO 4217 defines centavos.
- */
-const MINOR_UNIT_DIGITS: Record<CurrencyCode, number> = {
-  COP: 0,
-  USD: 2,
-  EUR: 2,
-};
+export { currencyDigits };
 
 /** Converts minor units to the currency's main unit, e.g. 1250 USD cents → 12.5 dollars. */
 export function toMajorUnits(amount: Money, currency: CurrencyCode): number {
-  return amount / 10 ** (MINOR_UNIT_DIGITS[currency] ?? 2);
+  return amount / 10 ** currencyDigits(currency);
 }
 
-/** Digits a currency shows after the decimal point in LIFEOS: 0 for COP, 2 for USD. */
-export function currencyDigits(currency: CurrencyCode): number {
-  return MINOR_UNIT_DIGITS[currency] ?? 2;
-}
-
-/** Formats an amount stored in minor units, e.g. formatMoney(1580000, "COP") → "$ 1.580.000". */
+/**
+ * Formats an amount stored in minor units:
+ * formatMoney(1580000, "COP") → "$ 1.580.000", formatMoney(1250, "USD") → "US$ 12,50", formatMoney(4590, "BRL") → "R$ 45,90".
+ */
 export function formatMoney(amount: Money, currency: CurrencyCode, locale = "es-CO"): string {
-  const digits = MINOR_UNIT_DIGITS[currency] ?? 2;
+  const digits = currencyDigits(currency);
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
+    currencyDisplay: currencyDisplay(currency),
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(amount / 10 ** digits);
+}
+
+/** The symbol LIFEOS shows for a currency: "$" (COP), "US$", "R$", "€". */
+export function currencySymbol(currency: CurrencyCode, locale = "es-CO"): string {
+  return (
+    new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: currencyDisplay(currency) })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency
+  );
 }
 
 /**
@@ -37,7 +38,7 @@ export function formatMoney(amount: Money, currency: CurrencyCode, locale = "es-
  * so parseAmount can read it back. E.g. formatAmountInput(120000, "COP") → "120.000".
  */
 export function formatAmountInput(amount: Money, currency: CurrencyCode, locale = "es-CO"): string {
-  const digits = MINOR_UNIT_DIGITS[currency] ?? 2;
+  const digits = currencyDigits(currency);
 
   return new Intl.NumberFormat(locale, {
     minimumFractionDigits: digits,
@@ -51,7 +52,7 @@ export function formatAmountInput(amount: Money, currency: CurrencyCode, locale 
  * Examples: "1.200.000" COP → 1200000, "$ 50.000" COP → 50000, "12,50" USD → 1250.
  */
 export function parseAmount(text: string, currency: CurrencyCode): Money | null {
-  const digits = MINOR_UNIT_DIGITS[currency] ?? 2;
+  const digits = currencyDigits(currency);
   const normalized = text.replace(/[\s$.]/g, "").replace(",", ".");
   const pattern = digits === 0 ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${digits}})?$`);
 

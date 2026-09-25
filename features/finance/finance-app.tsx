@@ -7,11 +7,11 @@ import { type AccountRemoval, getAccountRemoval } from "@/domain/finance/account
 import { getAccountBalance } from "@/domain/finance/balance";
 import type { Account, Transaction } from "@/domain/finance/types";
 import type { TransactionInput } from "@/domain/finance/validation";
-import { greeting, type Profile } from "@/domain/profile";
+import { greeting, mainCurrencyOf, type Profile } from "@/domain/profile";
 import { BackupPanel } from "@/features/backup/backup-panel";
 import { NameForm } from "@/features/profile/name-form";
 import { formatMoney } from "@/lib/format";
-import { DEFAULT_CURRENCY } from "@/lib/preferences";
+import { transactionCurrency } from "@/domain/finance/currencies";
 import { AccountForm } from "./account-form";
 import { FinanceDashboard } from "./finance-dashboard";
 import { QuickEntryBox } from "./quick-entry-box";
@@ -58,7 +58,10 @@ export function FinanceApp() {
     await saveTransaction(transaction);
     const title = transaction.description ?? transaction.category ?? "Movimiento";
     setUndo({
-      message: `Registrado: ${title}, ${formatMoney(transaction.amount, DEFAULT_CURRENCY)}.`,
+      message: `Registrado: ${title}, ${formatMoney(
+        transaction.amount,
+        transactionCurrency(transaction, data?.accounts ?? [], mainCurrencyOf(data?.profile)),
+      )}.`,
       revert: () => saveTransaction(markDeleted(transaction)),
     });
   }
@@ -114,6 +117,7 @@ export function FinanceApp() {
 
   // Archived accounts still exist (their history is valid); deleted ones do not.
   const existingAccounts = data.accounts.filter((account) => !account.deletedAt);
+  const mainCurrency = mainCurrencyOf(data.profile);
   const balances = new Map(
     existingAccounts.map((account) => [account.id, getAccountBalance(account, data.transactions)]),
   );
@@ -159,7 +163,7 @@ export function FinanceApp() {
               onClick={() => showForm({ type: "profile" })}
               className="shrink-0 rounded-lg px-2 py-1 text-sm text-zinc-500 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              {data.profile.displayName ? "Cambiar nombre" : "Poner mi nombre"}
+              Editar perfil
             </button>
           )}
         </header>
@@ -180,7 +184,7 @@ export function FinanceApp() {
               Por ejemplo: tu cuenta débito, el efectivo de tu billetera o tu tarjeta de crédito.
             </p>
           </div>
-          <AccountForm currency={DEFAULT_CURRENCY} onSave={saveAccount} />
+          <AccountForm currency={mainCurrency} onSave={saveAccount} />
         </div>
       ) : (
         <div className="flex flex-col gap-6">
@@ -189,7 +193,7 @@ export function FinanceApp() {
               <QuickEntryBox
                 accounts={existingAccounts.filter((account) => !account.archivedAt)}
                 transactions={data.transactions}
-                currency={DEFAULT_CURRENCY}
+                currency={mainCurrency}
                 onSave={saveQuickEntry}
                 onAdjust={(draft) => showForm({ type: "new-transaction", draft })}
               />
@@ -208,7 +212,7 @@ export function FinanceApp() {
             <TransactionForm
               accounts={existingAccounts}
               balances={balances}
-              currency={DEFAULT_CURRENCY}
+              currency={mainCurrency}
               draft={openForm.draft}
               onSave={saveAndClose(saveTransaction)}
               onCancel={closeForm}
@@ -221,7 +225,7 @@ export function FinanceApp() {
               key={openForm.transaction.id}
               accounts={existingAccounts}
               balances={balances}
-              currency={DEFAULT_CURRENCY}
+              currency={mainCurrency}
               transaction={openForm.transaction}
               onSave={saveAndClose(saveTransaction)}
               onCancel={closeForm}
@@ -230,13 +234,13 @@ export function FinanceApp() {
           )}
 
           {openForm.type === "new-account" && (
-            <AccountForm currency={DEFAULT_CURRENCY} onSave={saveAndClose(saveAccount)} onCancel={closeForm} />
+            <AccountForm currency={mainCurrency} onSave={saveAndClose(saveAccount)} onCancel={closeForm} />
           )}
 
           {openForm.type === "edit-account" && (
             <AccountForm
               key={openForm.account.id}
-              currency={DEFAULT_CURRENCY}
+              currency={mainCurrency}
               account={openForm.account}
               removal={getAccountRemoval(openForm.account, data.transactions)}
               onSave={saveAndClose(saveAccount)}
@@ -251,7 +255,7 @@ export function FinanceApp() {
           <FinanceDashboard
             accounts={data.accounts}
             transactions={data.transactions}
-            currency={DEFAULT_CURRENCY}
+            currency={mainCurrency}
             onSelectTransaction={editTransaction}
             onSelectAccount={(account) => showForm({ type: "edit-account", account })}
           />
