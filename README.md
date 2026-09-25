@@ -101,7 +101,8 @@ Open `http://localhost:3000` in your browser.
 - [x] Quick entry in plain Spanish ("almuerzo 25 mil con la nu").
 - [x] Installable app (PWA) with home-screen shortcuts.
 - [x] Welcome step where each person chooses how to be called.
-- [ ] Publish online (HTTPS) to install it on a phone.
+- [x] Publish online (HTTPS) to install it on a phone: [life-os-green-ten.vercel.app](https://life-os-green-ten.vercel.app).
+- [x] In-app guide for testers at `/probar`, with a shareable report.
 - [ ] Work offline (service worker).
 - [ ] Add quantitative habit tracking.
 - [ ] Add meaningful moments and photo storage.

@@ -86,6 +86,12 @@ Why one ledger instead of separate `Income`, `CashExpense`, `CreditPurchase` and
 
 `app/manifest.ts` describes the app for phones (name, icons, colors and the "Registrar" and "Reporte" shortcuts). Icons are generated from one SVG with `npm run icons`. Installing requires HTTPS (localhost counts as secure). Offline caching with a service worker is not implemented yet.
 
+## Tester guide
+
+`/probar` walks testers through 14 checks and builds a text report they share by WhatsApp or email. It includes their answers, device and app version (the Vercel commit), never their financial data. Answers are kept in `localStorage` only as a convenience while testing.
+
+`scenarios.test.ts` replays the guide with the real domain functions, so the numbers the guide promises stay true when rules change.
+
 ## Monthly report
 
 `getMonthlySummary` recalculates a month from the stored transactions; nothing is saved.
