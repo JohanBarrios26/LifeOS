@@ -8,6 +8,14 @@ LIFEOS is a long-term personal web application. It brings together finances, hab
 
 **Resumen en español:** LIFEOS es una aplicación web personal para registrar finanzas, hábitos y momentos importantes con datos reales. Sus datos se guardan solo en tu dispositivo (IndexedDB), sigue el principio *guardar hechos, calcular resultados*, separa la interfaz de las reglas de negocio y tiene pruebas automáticas con Vitest. Está hecha con Next.js, React y TypeScript.
 
+### Capturas
+
+Datos de ejemplo registrados con la entrada rápida en español ("salario 2,5 millones", "mercado 180 mil").
+
+| Panel principal | Reporte mensual |
+| --- | --- |
+| <img src="docs/screenshots/panel.png" alt="Panel principal de LIFEOS" width="280"> | <img src="docs/screenshots/reporte.png" alt="Reporte mensual de LIFEOS" width="280"> |
+
 This is not a 30-day challenge tracker. The goal is to preserve a trustworthy history for years, then turn that history into useful reports and reflections.
 
 ## Why LIFEOS?
